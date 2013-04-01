@@ -1,0 +1,59 @@
+// Pseudocode spec for the sound input class.
+// Paris is working on the feature object.
+
+// We are going for a blocking interface instead of cumbersome callbacks for now.  The stream parameters when reading can be used to perform on the fly resampling and channel remapping.
+
+// Constructors
+
+input_t( foo stream, bool in_or_out, int ch, double sr, enum frm)
+{
+  switch( stream){
+  case "file"
+  use ffmpeg
+  case "socket"
+  use homebrew code?
+  case "url"
+  use VLC?
+  case "adc"
+  Use portaudio
+  case "dac"
+  Use portaudio
+  }
+}
+
+// Seeking
+
+seek( long s); // move to sample frame s
+seek( double t); // move to second t
+
+// Writing
+
+write( array<T> &x, long offset, int channel_mask); // sample frames
+write( array<T> &x, double offset, int channel_mask); // seconds
+
+write_add( array<T> &x, long offset, int channel_mask); // sample frames
+write_add( array<T> &x, double offset, int channel_mask); // seconds
+
+// Mark's written and tested Segment and Tree, still need to write Rule.
+// A chart parser that builds upward from an abstract "Segment" type, and the Segment type currently is a dummy class containing only an integer start time, integer end time, floating point log likelihood, and integer nonterminal/senone/word index.    So, Camille, whatever representation you can give me for the audiovisual feature vectors, I'll just refactor "Segment" in order to pull it in.
+// Mark's code could do:
+vector<map<int,Segment>> chartByStime, chartByEtime;
+Tree<SegmentByLl> bestfirst;
+GMM gmm[N];
+Rule rule [R];
+while(in){
+  t=in.time ();
+  x=in.read ();
+  y=feature (x);
+  for(n=0;n<N;n++) {
+    ll=gmm[n].ll(y);
+    Segment s= Segment (t-1,t,ll,n);
+    bestfirst.insert (&((SegmentByLl)s));
+    chartByStime(t-1)(n)=s;
+    chartByEtime(t)(n)=s;
+    beam =bestfirst.first ().value() - beamwidth;
+    while ((b=bestfirst.firstpop()).value () > beam) {
+     Check to see if any rules can fire on b, if so then add them to bestfirst and the charts.
+    }
+  }
+}
