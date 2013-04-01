@@ -13,18 +13,18 @@ public:
 
 void test_array() {
   array<C> bar;
+  bar.resize(5);
+  bar[4].x = 12345;
+  assert(bar[4].x == 12345);
 
   array<CNest> barNest(5,4);
   barNest(4,3).c(5,6) = -7;
-  std::cout << "asdfasdf\n";
-  int i = barNest(4,3).c(5,6);
-  std::cout << i << " should be -7\n";
+  assert(barNest(4,3).c(5,6) == -7);
 
   array<float> foo(3,4,5);
   foo(2,3,4) = 42.0;
-  foo(4,3,2) = 44; // This should throw "index out of bounds".
-  float f = foo(2,3,4);
-  std::cout << f << " should be 42.0\n";
+  // This throws "index out of bounds":  foo(4,3,2) = 44;
+  assert( foo(2,3,4) == 42.0);
 
   float* p = (float*)foo; p[0] = foo[0];
   // This should fail to compile: int* p = (int*)foo;
@@ -56,11 +56,8 @@ int main() {
 
   while (in) {
     array<short>& x = in.readSamples(-256, 0, 0b00000111);
-  std::cout << ("asdf\n");
     short y = feature(x);
-  std::cout << ("asdf\n");
     plot(y);
-  std::cout << ("asdf\n");
     x = in.readSeconds(0.1, 0, 0b00000111);
     y = feature(x);
     plot(y);

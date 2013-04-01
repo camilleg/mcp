@@ -21,9 +21,12 @@ public:
 
 	// Construct/destruct
 	array() : m(0), n(0), k(0), v(NULL), alias(false) {}
+
 	array( const size_t _m, const size_t _n = 1, const size_t _k = 1) 
 	 : m(_m), n(_n), k(_k), alias(false) { if( size()!=0) v = new T[size()]; else v = NULL;}
+
 	array( T *p, const size_t M, const size_t N = 1, const size_t K = 1) : m(M), n(N), k(K), v(p), alias(true) {}
+
 	array( const array<T>& b) : m(b.m), n(b.n), k(b.k), v(NULL), alias(false)
 	{
 		try{
@@ -35,6 +38,7 @@ public:
 		memcpy(v, b.v, size() * sizeof(v[0]));
 		// std::copy is slower.  Even gcc's might call only memmove instead of memcpy.
 	}
+
 	~array() { if( !alias) delete [] v;}
 
 	// Assign
@@ -45,11 +49,17 @@ public:
 		return *this;
 	}
 
+#ifdef __CHECK
+	// foo(1,1,42), while in spirit a vector, may not be single-indexed like a(41).
+	// It may only be triple-indexed: a(0,0,41).
+	// Conversely, bar(42) *may* be triple-indexed; but only as bar(41,0,0).
+#endif
+
 	// Triple indexing
 	T& operator()( const size_t i1, const size_t i2, const size_t i3)
 	{
 #ifdef __CHECK
-		if( i1+i2*m+i3*(m*n) > size())
+		if (i1>=m || i2>=n || i3>=k)
 			throw std::runtime_error( "array::operator()(i1,i2,i3): index out of bounds");
 #endif
 		return v[i1+i2*m+i3*(m*n)];
@@ -58,7 +68,7 @@ public:
 	T operator()( const size_t i1, const size_t i2, const size_t i3) const
 	{
 #ifdef __CHECK
-		if( i1+i2*m+i3*(m*n) > size())
+		if (i1>=m || i2>=n || i3>=k)
 			throw std::runtime_error( "array::operator()(i1,i2,i3): index out of bounds");
 #endif
 		return v[i1+i2*m+i3*(m*n)];
@@ -68,7 +78,9 @@ public:
 	T& operator()( const size_t i1, const size_t i2)
 	{
 #ifdef __CHECK
-		if( i1+i2*m > size())
+		if (k > 1)
+			throw std::runtime_error( "array::operator()(i1,i2): missing third index");
+		if (i1>=m || i2>=n)
 			throw std::runtime_error( "array::operator()(i1,i2): index out of bounds");
 #endif
 		return v[i1+i2*m];
@@ -77,7 +89,9 @@ public:
 	T operator()( const size_t i1, const size_t i2) const
 	{
 #ifdef __CHECK
-		if( i1+i2*m > size())
+		if (k > 1)
+			throw std::runtime_error( "array::operator()(i1,i2): missing third index");
+		if (i1>=m || i2>=n)
 			throw std::runtime_error( "array::operator()(i1,i2): index out of bounds");
 #endif
 		return v[i1+i2*m];
@@ -87,7 +101,9 @@ public:
 	T& operator()( const size_t i1)
 	{
 #ifdef __CHECK
-		if( i1 > size())
+		if (n > 1 || k > 1)
+			throw std::runtime_error( "array::operator()(i1): missing second or third index");
+		if (i1>=m)
 			throw std::runtime_error( "array::operator()(i1): index out of bounds");
 #endif
 		return v[i1];
@@ -96,8 +112,29 @@ public:
 	T operator()( const size_t i1) const
 	{
 #ifdef __CHECK
-		if( i1 > size())
+		if (n > 1 || k > 1)
+			throw std::runtime_error( "array::operator()(i1): missing second or third index");
+		if (i1>=m)
 			throw std::runtime_error( "array::operator()(i1): index out of bounds");
+#endif
+		return v[i1];
+	}
+
+	// Indexing linearly, ignoring dimensionality.
+	T& operator[]( const size_t i1)
+	{
+#ifdef __CHECK
+		if( i1 >= size())
+			throw std::runtime_error( "array::operator[]: index out of bounds");
+#endif
+		return v[i1];
+	}
+
+	T operator[]( const size_t i1) const
+	{
+#ifdef __CHECK
+		if( i1 >= size())
+			throw std::runtime_error( "array::operator[]: index out of bounds");
 #endif
 		return v[i1];
 	}
@@ -148,9 +185,6 @@ public:
 	// to e.g. multiply two matrices elementwise.
 	// (Don't extend this to const pointers, because ambiguity results.)
 	operator T*() { return v; }
-
-	// test i1,i2,i3 individually,
-	// and also for too small not just too large.
 
 	// todo: wrap std::max_element in a oneliner method.
 };

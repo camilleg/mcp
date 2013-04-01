@@ -77,6 +77,6 @@ array<short>& input_t::readSeconds(double seconds, double offset_sec, int channe
     seconds = 0.0;
   }
   const int n = seconds * sample_rate();
-  std::cout << n << " samples\n";
+  std::cerr << n << " samples\n";
   return readSamples(seconds * sample_rate(), offset_sec * sample_rate(), channel_mask);
 }
