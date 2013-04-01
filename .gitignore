@@ -1,13 +1,16 @@
-# Compiled Object files
+# Exes
+a
+
+# Object files
 *.slo
 *.lo
 *.o
 
-# Compiled Dynamic libraries
+# Dynamic libraries
 *.so
 *.dylib
 
-# Compiled Static libraries
+# Static libraries
 *.lai
 *.la
 *.a
