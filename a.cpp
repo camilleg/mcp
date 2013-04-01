@@ -12,18 +12,20 @@ public:
 };
 
 void test_array() {
+  // operator[]
   array<C> bar;
   bar.resize(5);
   bar[4].x = 12345;
   assert(bar[4].x == 12345);
 
+  // operator()
   array<CNest> barNest(5,4);
   barNest(4,3).c(5,6) = -7;
   assert(barNest(4,3).c(5,6) == -7);
 
   array<float> foo(3,4,5);
   foo(2,3,4) = 42.0;
-  // This throws "index out of bounds":  foo(4,3,2) = 44;
+  // This should throw "index out of bounds":  foo(4,3,2) = 44;
   assert( foo(2,3,4) == 42.0);
 
   float* p = (float*)foo; p[0] = foo[0];
