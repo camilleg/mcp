@@ -30,6 +30,8 @@ void test_array() {
 
   float* p = (float*)foo; p[0] = foo[0];
   // This should fail to compile: int* p = (int*)foo;
+
+  // This shold throw "negative dimension":  array<short> asdf(-256);
 }
 
 // Build up unit tests?  In eigen, too?
@@ -56,11 +58,15 @@ int main() {
   input_t testAssigning(testCopying);
   input_t in = testAssigning;
 
+  array<short> x(128); // intentionally too small
   while (in) {
-    array<short>& x = in.readSamples(-256, 0, 0x7);
+    in.readSamples(x, -42, 0, 0x7);
     short y = feature(x);
     plot(y);
-    x = in.readSeconds(0.1, 0, 0x7);
+    in.readSamples(x, 256, 0, 0x3);
+    y = feature(x);
+    plot(y);
+    in.readSeconds(x, 0.1, 0, 0x7);
     y = feature(x);
     plot(y);
   }

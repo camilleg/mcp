@@ -35,8 +35,8 @@ public:
   // (Because size_t can convert to double, overloading one read() with the two obvious signatures would be ambiguous.)
   // channel_mask is a bitmask, e.g. 0b00111111 for the first 6 channels.
   // (Later, eigen<> might work as easily as array<>.)
-  array<short>& readSamples( size_t n, size_t offset, int channel_mask);
-  array<short>& readSeconds( double n, double offset, int channel_mask);
+  void readSamples(array<short>& dst, size_t n, size_t offset, int channel_mask);
+  void readSeconds(array<short>& dst, double n, double offset, int channel_mask);
 
   // Constructors and destructors.
   input_t() {}
@@ -59,24 +59,23 @@ public:
   operator bool() const { return true; } // still valid
 };
 
-array<short>& input_t::readSamples(size_t n, size_t offset_samples, int channel_mask) {
+void input_t::readSamples(array<short>& dst, size_t n, size_t offset_samples, int channel_mask) {
   if ((long)n < 0) {
     std::cerr << "input_t::readSamples zeroing negative sample count " << (long)n << ".\n";
     n = 0;
   }
   // If n==0, return an empty array.
-  array<short>* a = new array<short>(n);
+  dst.grow(n);
   for (size_t i=0; i<n; ++i)
-    (*a)(i) = short(drand48()*65535 - 32768);
-  return *a;
+    dst(i) = short(drand48()*65535 - 32768);
 }
 
-array<short>& input_t::readSeconds(double seconds, double offset_sec, int channel_mask) {
+void input_t::readSeconds(array<short>& dst, double seconds, double offset_sec, int channel_mask) {
   if (seconds < 0.0) {
     std::cerr << "input_t::readSeconds zeroing negative seconds-duration " << seconds << ".\n";
     seconds = 0.0;
   }
-  const int n = seconds * sample_rate();
+  const size_t n = seconds * sample_rate();
   std::cerr << n << " samples\n";
-  return readSamples(seconds * sample_rate(), offset_sec * sample_rate(), channel_mask);
+  readSamples(dst, n, offset_sec * sample_rate(), channel_mask);
 }

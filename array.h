@@ -145,7 +145,7 @@ public:
 	}
 
 	// Resize
-	void resize( const size_t i1, const size_t i2 = 1, const size_t i3 = 1)
+	void resize(const size_t i1, const size_t i2 = 1, const size_t i3 = 1)
 	{
 		if( m != i1 || n != i2 || k != i3){
 			if( alias)
@@ -161,10 +161,35 @@ public:
 		}
 	}
 
-	// Append to a vector
+	// Todo: remove special treatment of vectors (1,n,1) and (1,1,k), leaving only (m,1,1).
+	// Much cleaner.  And operator<< always did this.
+
+	// If this vector is short, make it longer.
+	void grow(const size_t i)
+	{
+		if (!is_vector())
+			throw std::runtime_error( "array::grow(): not a vector");			
+		if (i < size())
+			return;
+		try{
+			T* v2 = new T[i];
+			memcpy(v2, v, size() * sizeof(v[0]));
+			delete [] v;
+			v = v2;
+			// assert(!empty());
+			if(      m == size()) m = i;
+			else if( n == size()) n = i;
+			else if( k == size()) k = i;
+		}
+		catch( std::bad_alloc& ){
+			throw std::runtime_error( "array::grow(): error allocating memory");
+		}
+	}
+
+	// Append to a vector.  Expensive: linear in the vector's length!
 	void push_back(const T a)
 	{
-		if( m != size() && n != size() && k != size() && size() > 0)
+		if (!is_vector())
 			throw std::runtime_error( "array::push_back(): not a vector");			
 		try{
 			T *v2 = new T[size()+1];
@@ -185,6 +210,7 @@ public:
 	// Number of elements
 	size_t size() const { return m*n*k; }
 	bool empty() const { return size() == 0; }
+	bool is_vector() const { return m == size() || n == size() || k == size() || empty(); }
 
 	// Convert to a pointer, e.g. for single-value indexing the flattened elements
 	// to e.g. multiply two matrices elementwise.
