@@ -23,7 +23,12 @@ public:
 	array() : m(0), n(0), k(0), v(NULL), alias(false) {}
 
 	array( const size_t _m, const size_t _n = 1, const size_t _k = 1) 
-	 : m(_m), n(_n), k(_k), alias(false) { if( size()!=0) v = new T[size()]; else v = NULL;}
+	 : m(_m), n(_n), k(_k), alias(false)
+	{
+	  if ((long)m < 0 || (long)n < 0 || (long)k < 0)
+	    throw std::runtime_error( "array::array(): negative dimension" );
+	  v = empty() ? NULL : new T[size()];
+	}
 
 	array( T *p, const size_t M, const size_t N = 1, const size_t K = 1) : m(M), n(N), k(K), v(p), alias(true) {}
 
