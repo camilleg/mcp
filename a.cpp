@@ -57,10 +57,10 @@ int main() {
   input_t in = testAssigning;
 
   while (in) {
-    array<short>& x = in.readSamples(-256, 0, 0b00000111);
+    array<short>& x = in.readSamples(-256, 0, 0x7);
     short y = feature(x);
     plot(y);
-    x = in.readSeconds(0.1, 0, 0b00000111);
+    x = in.readSeconds(0.1, 0, 0x7);
     y = feature(x);
     plot(y);
   }
