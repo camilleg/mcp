@@ -6,16 +6,10 @@
 #ifndef __AUFEAT_H__
 #define __AUFEAT_H__
 
-#include <cmath>
-#include <cfloat>
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <stdexcept>
-
 #include "array.h"
 #include "fftw3.h" // apt-get install libfftw3-dev
-
+#include <cmath>
+#include <cfloat>
 
 //
 // Audio features class
@@ -32,70 +26,74 @@ const double Bark_freq[] = {
 template <class T>
 class aufeat_t{
 public:
-		T sr, min_f, max_f;
-		size_t sz; int nf, b, o, od; // fft size, number of filters, number of coeffs, eventual output size, delta filter estimator size
-		bool delta, delta2, zero, energy, bark, mel, dct, nrm, lg, tran;
-		array<T> W, DCT, w, Tm, Tt;
+	T sr, min_f, max_f;
+	size_t sz; int nf, b, o, od; // fft size, number of filters, number of coeffs, eventual output size, delta filter estimator size
+	bool delta, delta2, zero, energy, bark, mel, dct, nrm, lg, tran;
+	array<T> W, DCT, w, Tm, Tt;
 
-		// Buffer crap due to delta estimation
-		array<T> buf;
-		int bc, cf;
-		int cmod( int i, int j)
-		{
-			while( i >= j)
-				i -= j;
-			while( i < 0)
-				i += j;
-			return i;
-		}
+	// Buffer crap due to delta estimation
+	array<T> buf;
+	int bc, cf;
+	int cmod( int i, int j) const
+	{
+		while( i >= j)
+			i -= j;
+		while( i < 0)
+			i += j;
+		return i;
+	}
 
-		// FFT parameters
+	// FFT parameters
 #ifdef __FLOAT
-		fftwf_plan fft;
+	fftwf_plan fft;
 #else
-		fftw_plan fft;
+	fftw_plan fft;
 #endif
-		array<T> fx;
+	array<T> fx;
 
-		// Mel/Hz conversions
-		T Hz2mel( T f) { return 1127.01048 * log( 1.+f/700.); }
-		T mel2Hz( T m) { return 700.*(exp( m/1127.01048)-1.); }
+	// Mel/Hz conversions
+	T Hz2mel( T f) const { return 1127.01048 * log( 1.+f/700.); }
+	T mel2Hz( T m) const { return 700.*(exp( m/1127.01048)-1.); }
 
-		// Constructor/destructor
-		aufeat_t() : sz(0) {}
-		~aufeat_t()
-		{
+	// Constructor/destructor
+	aufeat_t() : sz(0) {}
+	~aufeat_t()
+	{
 #ifdef __FLOAT
-			fftwf_destroy_plan( fft);
+		fftwf_destroy_plan( fft);
 #else
-			fftw_destroy_plan( fft);
+		fftw_destroy_plan( fft);
 #endif
 	}
 
-	void report()
+	void report() const
 	{
-		using namespace std;
-		cout << "pntr " << this << endl;
-		cout << "param " << sr << ' ' << sz << ' ' << nf << ' ' << b << ' ' << min_f << ' ' << max_f << endl;
-		cout << "buf " << buf.m << ' ' << buf.n << ' ' << buf.k << ' ' << buf.v << endl;
+		std::cout << "pntr " << this << std::endl;
+		std::cout << "param " << sr << ' ' << sz << ' ' << nf << ' ' << b << ' ' << min_f << ' ' << max_f << std::endl;
+		std::cout << "buf " << buf.m << ' ' << buf.n << ' ' << buf.k << ' ' << buf.v << std::endl;
 	}
 
 	// Setup
-	void setup( T _sr, int _sz, int _nf, int _b, T mn, T mx, const std::string &O, const std::string tf = std::string( ""))
+	void setup( T _sr, int _sz, int _nf, int _b, T mn, T mx, const std::string &O, const std::string tf = "")
 	{
-		// Make local copies
-		sr = _sr, sz = _sz, nf = _nf, b = _b, min_f = mn, max_f = mx;
+		// Local copies
+		sr = _sr;
+		sz = _sz;
+		nf = _nf;
+		b = _b;
+		min_f = mn;
+		max_f = mx;
 
 		// Parse the options string
-		bark = O.find( 'b') != std::string::npos;
-		mel = O.find( 'm') != std::string::npos;
-		delta = O.find( 'd') != std::string::npos;
+		bark   = O.find( 'b') != std::string::npos;
+		mel    = O.find( 'm') != std::string::npos;
+		delta  = O.find( 'd') != std::string::npos;
 		delta2 = O.find( 'D') != std::string::npos;
-		zero = O.find( '0') != std::string::npos;
+		zero   = O.find( '0') != std::string::npos;
 		energy = O.find( 'e') != std::string::npos;
-		dct = O.find( 'c') != std::string::npos;
-		nrm = O.find( 'n') != std::string::npos;
-		lg = O.find( 'l') != std::string::npos;
+		dct    = O.find( 'c') != std::string::npos;
+		nrm    = O.find( 'n') != std::string::npos;
+		lg     = O.find( 'l') != std::string::npos;
 		tran = tf.size() > 0;
 
 		// Various checks
@@ -119,7 +117,7 @@ public:
 #ifdef __FLOAT
 		fft = fftwf_plan_dft_r2c_1d( sz, &fx(0), (fftwf_complex*)&fx(0), FFTW_ESTIMATE);
 #else
-		fft = fftw_plan_dft_r2c_1d( sz, &fx(0), (fftw_complex*)&fx(0), FFTW_ESTIMATE);
+		fft = fftw_plan_dft_r2c_1d ( sz, &fx(0), (fftw_complex*)&fx(0), FFTW_ESTIMATE);
 #endif
 
 		// Center frequencies for warping
@@ -185,12 +183,11 @@ public:
 		// Load the transformation data
 		if( tran){
 			std::ifstream f( tf.c_str(), std::ios::in | std::ios::binary);
-			int wm, wn;
-			f.read( (char*)&wm, sizeof( int));
-			f.read( (char*)&wn, sizeof( int));
-			Tt.resize( wm, wn);
+			int wm_wn[2];
+			f.read( (char*)wm_wn, 2 * sizeof( int));
+			Tt.resize( wm_wn[0], wm_wn[1]);
 			f.read( (char*)Tt.v, Tt.size()*sizeof( T));
-			Tm.resize( wm);
+			Tm.resize( wm_wn[0]);
 			f.read( (char*)Tm.v, Tm.size()*sizeof( T));
 			o = Tt.n;
 		}
@@ -212,7 +209,7 @@ public:
 		// Make the delta filter flags and constants
 		if( delta){
 			od = 4;
-			o = 2*o;
+			o *= 2;
 		}else
 			od = 0;
 
@@ -228,13 +225,13 @@ public:
 	}
 
 	// Extract features from an input, if using delta features it imposes a delay of 4 frames
-	T extract( array<T> &x, array<T> &y, bool use_buf = true)
+	T extract( array<T> &y, const array<T> &x, const bool use_buf = true)
 	{
 		using namespace std;
 #ifdef __CHECK
 		// Check sizes
 		if( x.size() != sz)
-			throw std::runtime_error( "audfeat_t::extract(): Input array size more than transform size");
+			throw std::runtime_error( "audfeat_t::extract(): Input array larger than transform size");
 #endif
 		// Setup and do the FFT
 		for( size_t i = 0 ; i < sz ; ++i)
@@ -248,8 +245,8 @@ public:
 		for( size_t i = 0 ; i < sz/2+1 ; ++i)
 			fx[i] = sqrt( fx(2*i)*fx(2*i) + fx(2*i+1)*fx(2*i+1));
 
-		// Normalize if asked to
 		if( nrm){
+			// Normalize
 			T sm = FLT_EPSILON;
 			for( size_t i = 0 ; i < sz/2+1 ; ++i)
 				sm += fx[i];
@@ -257,10 +254,11 @@ public:
 				fx[i] /= sm;
 		}
 
-		// Take the log if asked to
-		if( lg)
+		if( lg){
+			// Take the log
 			for( size_t i = 0 ; i < sz/2+1 ; ++i)
 				fx[i] = log( fx[i] + FLT_EPSILON);
+		}
 
 		// Warp according to mapping
 		array<T> t;
@@ -348,25 +346,25 @@ public:
 	}
 
 	// Extract features from an input, do it offline with no delta delay
-	void extract_offline( const array<T> &x, int hp, array<T> &y, array<T> &e)
+	void extract_offline( array<T> &y, array<T> &e, const array<T> &x, const int hp)
 	{
-		int to;
 		y.resize( o, (x.size()-sz)/hp+1);
 		e.resize( (x.size()-sz)/hp+1);
 		int ri = 0;
+		int to;
 		for( int i = 0 ; i < x.size()-sz ; i+= hp, ri++){
 			// Make temps
 			array<T> tx( x.v+i, sz), ty;//( y.v+ri*o, o);
 
 			// Get non-delta features
-			e(ri) = extract( tx, ty, false);
+			e(ri) = extract( ty, tx, false);
 			to = ty.size();
 			for( int j = 0 ; j < to ; j++)
 				y(j,ri) = ty(j);
 		}
 
-		// Compute the deltas if needed
 		if( delta)
+			// Compute the deltas
 			for( int i = 0 ; i < y.n ; i++)
 				for( int k = 0 ; k < to ; k++){
 					y(to+k,i) = 0;

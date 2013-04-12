@@ -13,16 +13,16 @@ typedef double real_t;
 int main( int argc, const char **argv)
 {
 	// Analysis options
-	const string fopts = getoption<string>( "-F", argc, argv, string( "cdm"), "Feature options"); // Feature options string
-	const int sz = getoption<int>( "-s", argc, argv, 1024, "FFT size"); // Size of underlying FFT
-	const int b = getoption<int>( "-n", argc, argv, 13, "Feature coefficients"); // Number of coeffs to use
+	const string fopts = getoption<string>( "-F", argc, argv, string( "cdm"), "Feature options"); // e.g., a1w26c14dD
+	const int sz = getoption<int>( "-s", argc, argv, 1024, "FFT size"); // e.g., 512
+	const int b = getoption<int>( "-n", argc, argv, 13, "Feature coefficients"); // Number of coeffs
 #ifdef UNUSED
-	const real_t flo = getoption<real_t>( "-l", argc, argv, 80, "Lowest frequency"); // Lowest frequency
-	const real_t fhi = getoption<real_t>( "-h", argc, argv, 7500, "Highest frequency"); // Highest frequency
+	const real_t flo = getoption<real_t>( "-l", argc, argv, 80, "Lowest frequency"); // in Hz
+	const real_t fhi = getoption<real_t>( "-h", argc, argv, 7500, "Highest frequency"); // in Hz
 #endif
-	const int fb = getoption<int>( "-b", argc, argv, 32, "Filterbank filters"); // Filterbank filters
+	const int fb = getoption<int>( "-b", argc, argv, 32, "Filterbank filters");
 
-	const string infile = getoption<string>( "-i", argc, argv, string( "80s.wav"), "Input soundfile"); // Input soundfile(s)
+	const string infile = getoption<string>( "-i", argc, argv, string( "80s.wav"), "Input soundfile");
 
 	// Open the soundfile
 	wavfile_t w( infile);
@@ -45,7 +45,7 @@ int main( int argc, const char **argv)
 		w.read_mono( x);
 
 		// Get its features
-		f.extract( x, y);
+		f.extract( y, x);
 
 		// Store them inside a matrix
 		if( !Y.size())
