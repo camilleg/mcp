@@ -22,11 +22,11 @@ int main( int argc, const char **argv)
 #endif
 	const int fb = getoption<int>( "-b", argc, argv, 32, "Filterbank filters");
 
-	const string infile = getoption<string>( "-i", argc, argv, string( "80s.wav"), "Input soundfile");
+	const string infileName = getoption<string>( "-i", argc, argv, string( "80s.wav"), "Input soundfile");
 
 	// Open the soundfile
-	wavfile_t w( infile);
-	const real_t sr = w.samplerate;
+	wavfile_t infile( infileName);
+	const real_t sr = infile.samplerate;
 
 	// Allocate features object
 	aufeat_t<real_t> f;
@@ -39,21 +39,22 @@ int main( int argc, const char **argv)
 	array<real_t> x( 1024);
 	array<real_t> y( 1024);
 	array<real_t> Y;
-	for(int i=0; w.file; ++i){
-		cout << "." << endl;
+	for(int i=0; infile.file; ++i){
+		cerr << ".";
 		// Read a buffer
-		w.read_mono( x);
+		infile.read_mono( x);
 
 		// Get its features
 		f.extract( y, x);
 
 		// Store them inside a matrix
 		if( !Y.size())
-			Y.resize( y.size(), w.frames/sz+1);
+			Y.resize( y.size(), infile.frames/sz+1);
 		for( size_t j = 0 ; j < y.size() ; ++j)
 			Y(j,i) = pow( y(j), 0.3);
 	}
+	cerr << endl;
 
-	// Show me
+	// Show feature
 	aq_image( Y.v, Y.m, Y.n);
 }

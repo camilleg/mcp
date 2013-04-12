@@ -3,13 +3,11 @@
 // author  : Paris Smaragdis
 // copyright: (c) 2009 Adobe Systems Incorporated, All Rights Reserved
 
-#ifndef __WAVFILE_H
-#define __WAVFILE_H
+#pragma once
 
+#include "array.h"
 #include <fstream>
 #include <string>
-#include <cstring> // for memcmp
-#include "array.h"
 
 class wavfile_t{
 public:
@@ -28,22 +26,22 @@ public:
 		if( mode == std::ios::in){
 			file.open( fn.c_str(), std::ios::in | std::ios::binary);
 
-			unsigned int i, r, a;
-			signed short c, s, f;
-			char id[4];
-
-			// Make sure you are at the start of file
+			// at start of file
 			file.seekg( 0, std::ios::beg);
 
 			// Check if file is in WAVE format
+			char id[4];
 			file.read( id, 4);
 			if( memcmp( id, "RIFF", 4))
-				throw std::runtime_error( "wavfile_t::wavfile_t() : File doesn't start with 'RIFF'");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): file doesn't start with 'RIFF'");
 
 			file.seekg( 4, std::ios::cur); // Skip filesize ...
 			file.read( (char*)id, 4);  
 			if( memcmp( id, "WAVE", 4))
-				throw std::runtime_error( "wavfile_t::wavfile_t() : File doesn't have 'WAVE' id");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): no 'WAVE' id");
+
+			unsigned int i, r, a;
+			signed short c, s, f;
 
 			// Find where fmt chunk is
 			while( !file.rdstate()){
@@ -53,10 +51,9 @@ public:
 				file.read( (char*)&i, sizeof( unsigned int));
 				file.seekg( i, std::ios::cur);
 			}
-			throw std::runtime_error( "wavfile_t::wavfile_t() : Could not locate 'fmt ' chunk");
+			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'fmt ' chunk");
 
 		fmt_code:
-
 			// Get important parameters
 			file.read( (char*)&i, sizeof( unsigned int));
 			file.read( (char*)&f, sizeof( signed short));
@@ -71,23 +68,23 @@ public:
 
 			// Get sample format
 			if( (f > 1) && (s != 16 && s != 8 && s != 32))
-				throw std::runtime_error( "wavfile_t::wavfile_t() : WAVE file isn't PCM float, 16-bit or 8-bit, can't read that format");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): unexpected format (not PCM float, 16-bit or 8-bit)");
 
 			// Move to first sample
 			file.seekg( i-16, std::ios::cur);
 			while( !file.rdstate()){
 				file.read( (char*)id, 4);
 				if( !memcmp( id, "data", 4))
-					goto data_code;  // Ouch another one!
+					goto data_code;  // Ouch a goto!
 				file.read( (char*)&i, sizeof( unsigned int));
 				file.seekg( i, std::ios::cur);
 			}
-			throw std::runtime_error( "wavfile_t::wavfile_t() : Could not locate 'data' chunk");
+			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'data' chunk");
 
 		data_code:
 			// Read number of samples
 			file.read( (char*)&frames, sizeof( unsigned int));
-			frames = frames / (bits/8) / channels;
+			frames /= (bits/8) / channels;
 
 			file_type = 1;
 
@@ -96,7 +93,7 @@ public:
 			file.open( fn.c_str(), std::ios::out | std::ios::binary);
 			unsigned int i, s;
 
-			// Write all the header info
+			// Write header
 			file.write( "RIFF", 4);
 			i = 0; file.write( (char*)&i, 4); // file size, write in the end
 			file.write( "WAVE", 4);
@@ -119,7 +116,7 @@ public:
 
 	~wavfile_t()
 	{
-		// Write out the sizes
+		// Write sizes
 		if( file_type == 2){
 			file.seekp( 0, std::ios::end);
 			unsigned int i = file.tellp();
@@ -132,13 +129,12 @@ public:
 		}
 	}
 
-	// Read a mono buffer from the file
+	// Read a mono buffer
 	template <class T>
 	void read_mono( array<T> &p)
 	{
-		// This is a write file
 		if( file_type == 2)
-			throw std::runtime_error( "wavfile_t::read_mono(): Can't read from a write file");
+			throw std::runtime_error( "wavfile_t::read_mono(): file opened write-only");
 
 		// Read the first channel only
 		if( bits == 16){
@@ -162,7 +158,7 @@ public:
 		}
 	}
 
-	// Write a buffer to the file
+	// Write a (mono?) buffer
 	template <class T>
 	void write( const array<T> &p)
 	{
@@ -172,5 +168,3 @@ public:
 		}
 	}
 };
-
-#endif
