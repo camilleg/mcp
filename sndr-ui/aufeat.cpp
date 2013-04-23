@@ -1,20 +1,21 @@
-#include "wavfile.h"
 #include "aufeat.h"
 #include "optparse.h"
-
 #include <iostream>
-
 #include "aquat.h"
 
-using namespace std;
-
-typedef double real_t;
+extern int ffmpeg_init();
+extern bool ffmpeg_open(const std::string& filename);
+extern bool ffmpeg_eof();
+extern bool ffmpeg_read( array<double> &p);
+extern double ffmpeg_samplerate();
 
 int main( int argc, const char **argv)
 {
+	typedef double real_t;
+
 	// Analysis options
-	const string fopts = getoption<string>( "-F", argc, argv, string( "cdm"), "Feature options"); // e.g., a1w26c14dD
-	const int sz = getoption<int>( "-s", argc, argv, 1024, "FFT size"); // e.g., 512
+	const std::string fopts = getoption<std::string>( "-F", argc, argv, "cdm", "Feature options"); // e.g., a1w26c14dD
+	const int fft_size = 2304;;;; // getoption<int>( "-s", argc, argv, 1024, "FFT size"); // e.g., 512
 	const int b = getoption<int>( "-n", argc, argv, 13, "Feature coefficients"); // Number of coeffs
 #ifdef UNUSED
 	const real_t flo = getoption<real_t>( "-l", argc, argv, 80, "Lowest frequency"); // in Hz
@@ -22,39 +23,49 @@ int main( int argc, const char **argv)
 #endif
 	const int fb = getoption<int>( "-b", argc, argv, 32, "Filterbank filters");
 
-	const string infileName = getoption<string>( "-i", argc, argv, string( "80s.wav"), "Input soundfile");
+	const std::string infileName = getoption<std::string>( "-i", argc, argv, "/dev/null", "Input soundfile");
+
+	if (ffmpeg_init() != 0)
+	  return 1;
 
 	// Open the soundfile
-	wavfile_t infile( infileName);
-	const real_t sr = infile.samplerate;
+	if (!ffmpeg_open(infileName))
+	  return 1;
+	const real_t sr = ffmpeg_samplerate();
 
 	// Allocate features object
-	aufeat_t<real_t> f;
-	f.setup( sr, sz, fb, b, 50, sr/2, fopts);
+	aufeat_t<real_t> feature;
+	feature.setup( sr, fft_size, fb, b, 50, sr/2, fopts);
 
-	// Open a graphics terminal
+	// Open graphics terminal
 	aq_window( 1, "Features");
 
 	// Process
-	array<real_t> x( 1024);
-	array<real_t> y( 1024);
+	array<real_t> x(fft_size);
+	array<real_t> y(fft_size);
 	array<real_t> Y;
-	for(int i=0; infile.file; ++i){
-		cerr << ".";
-		// Read a buffer
-		infile.read_mono( x);
+	for (int i=0; !ffmpeg_eof(); ++i){
+		// Read a buffer.
+		if (!ffmpeg_read( x)) {
+		  continue;
+		}
 
-		// Get its features
-		f.extract( y, x);
+		// Get buffer's features.
+		feature.extract( y, x);
 
-		// Store them inside a matrix
-		if( !Y.size())
-			Y.resize( y.size(), infile.frames/sz+1);
-		for( size_t j = 0 ; j < y.size() ; ++j)
+		// Store features in matrix.
+		if( Y.empty()) {
+#define hack 5000
+			printf("resizing to %lu x %d\n", y.size(), hack);
+			Y.resize( y.size(), hack); // fft_size/*wavfile.h's infile.frames*/ /fft_size+1;
+		}
+		printf("stuffing Y(%d .. %lu, %d)\n", 0, y.size()-1, i);
+		for( size_t j = 0; j < y.size(); ++j)
 			Y(j,i) = pow( y(j), 0.3);
 	}
-	cerr << endl;
+	std::cerr << std::endl;
 
 	// Show feature
 	aq_image( Y.v, Y.m, Y.n);
+	return 0;
 }

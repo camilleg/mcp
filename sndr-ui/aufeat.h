@@ -10,6 +10,7 @@
 #include "fftw3.h" // apt-get install libfftw3-dev
 #include <cmath>
 #include <cfloat>
+#include <fstream>
 
 //
 // Audio features class
@@ -231,7 +232,7 @@ public:
 #ifdef __CHECK
 		// Check sizes
 		if( x.size() != sz)
-			throw std::runtime_error( "audfeat_t::extract(): Input array larger than transform size");
+			throw std::runtime_error( "audfeat_t::extract(): Input array's size differs from transform size");
 #endif
 		// Setup and do the FFT
 		for( size_t i = 0 ; i < sz ; ++i)

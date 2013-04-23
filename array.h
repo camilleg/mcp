@@ -26,7 +26,7 @@ public:
 	 : m(_m), n(_n), k(_k), alias(false)
 	{
 	  if ((long)m < 0 || (long)n < 0 || (long)k < 0)
-	    throw std::runtime_error( "array::array(): negative dimension" );
+	    throw std::runtime_error( "array::array(): negative dimension");
 	  v = empty() ? NULL : new T[size()];
 	}
 
