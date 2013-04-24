@@ -7,8 +7,8 @@
 #include "array.h"
 
 extern "C" {
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
+#include <libavcodec/avcodec.h>		// apt-get install libavcodec-dev
+#include <libavformat/avformat.h>	// apt-get install libavformat-dev
 }
 
 AVFormatContext *pFormatContext = NULL;
