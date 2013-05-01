@@ -139,17 +139,13 @@ bool ffmpeg_read(array<double> &dst)
   if (hit_eof || ret_opened < 0)
     return false;
 
-  uint16_t* pw = NULL;
-  size_t cw = 0;
-
   static double cache[100000]; //;;;; hardcoded length.  ;;;;use an array<double> instead.
   static size_t icache = 0;
 
-  const size_t cwDst = dst.size();
-  
   // Drain cache into dst before reading more frames.
+  const size_t cwDst = dst.size();
   size_t i = std::min(cwDst, icache);
-  memcpy(&dst[0], cache, i*sizeof(cache[0])); // todo: std::copy(cache, cache+j, dst);
+  std::copy(cache, cache+i, (double*)dst);
 
   if (i < icache) {
     // Reconstruct incompletely drained cache.
@@ -159,19 +155,23 @@ bool ffmpeg_read(array<double> &dst)
   }
 
   // Continue filling dst[i..cwDst].
+  uint16_t* pw = NULL;
+  size_t cw = 0;
   while (i < cwDst) {
     if (!ffmpeg_read_frame(pw, cw)) {
       // Failed to read another frame from file.
       return false;
     }
     // Fill dst[i..] from pw[0..cw].
-    size_t iw = std::min(cwDst-i, cw);
-    memcpy(&dst[i], pw, iw*sizeof(pw[0]));
+    const size_t iw = std::min(cwDst-i, cw);
+    for (size_t j=0; j<iw; ++j)
+      dst[i+j] = double(pw[iw]) / SHRT_MAX;
     i += iw;
+    // We can't std::copy(pw, pw+iw, (double*)dst), because we also convert from short to double.
     if (iw < cw) {
       assert(i == cwDst); // Filled dst.
       // Save the unused samples pw[iw..cw] into local cache.
-      memcpy(cache+icache, pw+iw, (cw-iw)*sizeof(pw[0]));
+      std::copy(pw+iw, pw+cw, cache+icache);
       icache += cw-iw;
       assert(icache < sizeof(cache)/sizeof(cache[0])); // hardcoded length
     }

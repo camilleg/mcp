@@ -213,7 +213,7 @@ public:
 	bool is_vector() const { return m == size() || n == size() || k == size() || empty(); }
 
 	// Convert to a pointer, e.g. for single-value indexing the flattened elements
-	// to e.g. multiply two matrices elementwise.
+	// to e.g. multiply two matrices elementwise, or pass an "iterator" to std::copy().
 	// (Don't extend this to const pointers, because ambiguity results.)
 	operator T*() { return v; }
 
