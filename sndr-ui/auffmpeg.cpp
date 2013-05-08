@@ -124,10 +124,11 @@ again:
       goto again;
     }
     cw = csamples;
-    static uint16_t buf[100000]; //;;;; hardcoded length
+    static array<uint16_t> buf;
+    buf.grow(cw);
     const uint16_t* pSrc = (const uint16_t*)src_frame->data[0];
-    std::copy(pSrc, pSrc+cw, buf); //;;;; extra array-copy.  Nicer would be to av_free_packet "after return."
-    pw = buf;
+    std::copy(pSrc, pSrc+cw, buf+0); //;;;; extra array-copy.  Nicer would be to av_free_packet "after return."
+    pw = buf+0;
   }
   av_free_packet(&packet);
   return true;
@@ -139,13 +140,13 @@ bool ffmpeg_read(array<double> &dst)
   if (hit_eof || ret_opened < 0)
     return false;
 
-  static double cache[100000]; //;;;; hardcoded length.  ;;;;use an array<double> instead.
+  static array<double> cache;
   static size_t icache = 0;
 
   // Drain cache into dst before reading more frames.
   const size_t cwDst = dst.size();
   size_t i = std::min(cwDst, icache);
-  std::copy(cache, cache+i, (double*)dst);
+  std::copy(cache+0, cache+i, (double*)dst);
 
   if (i < icache) {
     // Reconstruct incompletely drained cache.
@@ -171,9 +172,10 @@ bool ffmpeg_read(array<double> &dst)
     if (iw < cw) {
       assert(i == cwDst); // Filled dst.
       // Save the unused samples pw[iw..cw] into local cache.
+      const size_t icacheNew = icache + cw-iw;
+      cache.grow(icacheNew);
       std::copy(pw+iw, pw+cw, cache+icache);
-      icache += cw-iw;
-      assert(icache < sizeof(cache)/sizeof(cache[0])); // hardcoded length
+      icache = icacheNew;
     }
   }
   return true;

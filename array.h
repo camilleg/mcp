@@ -176,14 +176,15 @@ public:
 			memcpy(v2, v, size() * sizeof(v[0]));
 			delete [] v;
 			v = v2;
-			// assert(!empty());
-			if(      m == size()) m = i;
+			if (empty()) m=i, n=k=1;
+			else if( m == size()) m = i;
 			else if( n == size()) n = i;
 			else if( k == size()) k = i;
 		}
 		catch( std::bad_alloc& ){
 			throw std::runtime_error( "array::grow(): error allocating memory");
 		}
+		assert(size() >= i);
 	}
 
 	// Append to a vector.  Expensive: linear in the vector's length!
@@ -196,7 +197,7 @@ public:
 			memcpy(v2, v, size() * sizeof(v[0]));
 			delete [] v;
 			v = v2;
-			if( size() == 0) m = n = k = 1;
+			if (empty()) m=n=k=1;
 			else if( m == size()) ++m;
 			else if( n == size()) ++n;
 			else if( k == size()) ++k;
@@ -218,6 +219,9 @@ public:
 	operator T*() { return v; }
 
 	// todo: wrap std::max_element in a oneliner method.
+	//
+	// todo: normalize values of m,n,k so if one of them is zero, all of them are;
+	// i.e., forbid multiple representations with the same meaning (empty()).
 };
 
 // ostream interface to array<T>
