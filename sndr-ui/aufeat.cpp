@@ -28,7 +28,7 @@ int main(int argc, const char **argv)
 	if (ffmpeg_init() != 0)
 	  return 1;
 
-	// Open soundfile.
+	// Open multimedia source (video or pure audio, just a filename for now).
 	if (!ffmpeg_open(infileName))
 	  return 1;
 	const real_t sr = ffmpeg_samplerate();
@@ -52,15 +52,20 @@ int main(int argc, const char **argv)
 		// Compute feature y from buffer x.
 		feature.extract(y, x);
 
-		// Accumulate feature y into matrix Y.
+#if 1
 		if (Y.empty()) {
 #define hack 15000
-			printf("resizing to %lu x %d\n", y.size(), hack);
+			printf("resizing matrix Y to %lu by %d\n", y.size(), hack);
+			//printf("2nd dim should be %d / #frames == i_max\n", fft_size); return 0;
+
 			Y.resize(y.size(), hack); // fft_size/*wavfile.h's infile.frames*/ /fft_size+1;
 		}
 		printf("stuffing Y(%d .. %lu, %d)\n", 0, y.size()-1, i);
 		for (size_t j = 0; j < y.size(); ++j)
 			Y(j,i) = pow(y(j), 0.3);
+#else
+		// Export feature y to a video stream playable by ffplay.
+#endif
 	}
 	std::cerr << std::endl;
 

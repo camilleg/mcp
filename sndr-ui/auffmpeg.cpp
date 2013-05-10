@@ -3,7 +3,6 @@
 #define INT64_C(c) (c ## LL)
 #define UINT64_C(c) (c ## ULL)
 #endif
-
 extern "C" {
 #include <libavcodec/avcodec.h>		// apt-get install libavcodec-dev
 #include <libavformat/avformat.h>	// apt-get install libavformat-dev
@@ -70,6 +69,10 @@ bool ffmpeg_open(const std::string& filename)
   return (ret_opened = open_input_file(filename.c_str())) >= 0;
 }
 
+bool ffmpeg_eof() { return hit_eof; }
+
+double ffmpeg_samplerate() { return pDecoderContext->sample_rate; }
+
 void debug_frame(const AVFrame *frame)
 {
   const int n = frame->nb_samples * av_get_channel_layout_nb_channels(av_frame_get_channel_layout(frame));
@@ -78,11 +81,13 @@ void debug_frame(const AVFrame *frame)
   double seconds = (dur * timebase.num) / double(timebase.den);
   static double s = 0; s += seconds;
   printf("another %d samples, %f seconds, respective totals %d %f\n", n, seconds, a, s);
+  const int m = pDecoderContext->frame_size;
+  printf("%d samples per channel per audio frame, at %f SR, == %f seconds.\n", m, ffmpeg_samplerate(), m/ffmpeg_samplerate());
 }
 
-bool ffmpeg_eof() { return hit_eof; }
-
-double ffmpeg_samplerate() { return pDecoderContext->sample_rate; }
+// ffmpeg can report the number of frames only by explicitly counting them.
+// To avoid a separate pass through a file (which doesn't generalize to streamed input),
+// it can estimate it: http://superuser.com/questions/84631/how-do-i-get-the-number-of-frames-in-a-video-on-the-linux-command-line
 
 bool ffmpeg_read_frame(uint16_t*& pw, size_t& cw)
 {
@@ -116,7 +121,7 @@ again:
   }
 
   if (got_frame) {
-    // debug_frame(src_frame);
+    debug_frame(src_frame);
     const size_t csamples = src_frame->nb_samples *
       av_get_channel_layout_nb_channels(av_frame_get_channel_layout(src_frame));
     if (csamples == 0) {

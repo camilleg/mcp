@@ -7,7 +7,7 @@
 #define __AUFEAT_H__
 
 #include "array.h"
-#include "fftw3.h" // apt-get install libfftw3-dev
+#include <fftw3.h> // apt-get install libfftw3-dev
 #include <cmath>
 #include <cfloat>
 #include <fstream>
