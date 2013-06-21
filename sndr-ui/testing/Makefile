@@ -1,5 +1,5 @@
 all: streamtest
-	./streamtest
+	./streamtest 127.0.0.1 49990
 
 streamtest: streamtest.cpp Makefile
 	g++ -Wall -g streamtest.cpp -o streamtest \

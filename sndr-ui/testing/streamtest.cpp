@@ -1,4 +1,7 @@
 /*
+    Synthesize a video signal, and stream it over SDP
+    ( http://en.wikipedia.org/wiki/Session_Description_Protocol ).
+
     Usage:
         ./streamtest &
 
@@ -13,7 +16,7 @@
     a=rtpmap:96 H264/90000
     a=fmtp:96 packetization-mode=1
     ^D
-    # The values 127.0.0.1 and 49990 must agree with their #defines below.
+    # The values 127.0.0.1 and 49990 must agree with argv[1] and argv[2].
 
     To play what streamtest streams:
 	ffplay -i myStream.sdp
@@ -41,19 +44,16 @@ const int HEIGHT = 240;
 const int FPS = 30;
 const int BITRATE = 400000;
 
-const char* RTP_ADDRESS = "127.0.0.1";
-const int RTP_PORT = 49990;
 
 struct AVFormatContext* avctx;
 struct x264_t* encoder;
 struct SwsContext* imgctx;
 AVCodecContext* pCodecCtx = NULL;
 
-//printf("todo: replace aufeat.cpp's output with this stream.\n"); exit(0);
 void create_sample_picture(x264_picture_t* picDst)
 {
   // Generate a test signal, in imgctx's AVPixelFormat AV_PIX_FMT_RGB24,
-  // described in libavutil/pixfmt.h and http://libav.org/doxygen/master/pixfmt_8h.html
+  // described in libavutil/pixfmt.h and http://libav.org/doxygen/master/pixfmt_8h.html .
   static double t = 0.0;
   t += 0.3;
   static uint8_t rgbStore[WIDTH * HEIGHT * 3];
@@ -75,7 +75,7 @@ void create_sample_picture(x264_picture_t* picDst)
   picSrc->linesize[0] *= -1;
 #endif
 
-  // create a frame to store in
+  // Create the frame *picDst for sws_scale() to stuff.
   x264_picture_alloc(picDst, X264_CSP_I420, WIDTH, HEIGHT);
 
   // Scale the image.
@@ -92,9 +92,9 @@ int encode_frame(x264_picture_t* picSrc, x264_nal_t** nals)
   // Encode a frame into a sequence of NAL units.
 
 #ifdef doesnt_work
-  // This didn't remove the warning
+  // Even when commenting out where AVPacket sets p.pts = AV_NOPTS_VALUE,
+  // this didn't remove the warning:
   //     [rtp @ 0x269c0a0] Encoder did not produce proper pts, making some up.
-  // even when commenting out where AVPacket sets p.pts = AV_NOPTS_VALUE.
   static int pts = 0;
   ((AVFrame*)picSrc)->pts = ++pts; // c->frame_number; //;;;; (1.0/FPS) * ...;
 #endif
@@ -128,6 +128,11 @@ void stream_frame(uint8_t* payload, int size)
 
 int main(int argc, char* argv[])
 {
+    if (argc != 3) {
+      printf("usage: streamtest dottedquad port\n");
+      return -1;
+    }
+
     // Initalize ffmpeg.
     av_register_all();
     avformat_network_init();
@@ -162,7 +167,11 @@ int main(int argc, char* argv[])
     struct AVOutputFormat* fmt = av_guess_format("rtp", NULL, NULL);
     avctx->oformat = fmt;
 
-    snprintf(avctx->filename, sizeof(avctx->filename), "rtp://%s:%d", RTP_ADDRESS, RTP_PORT);
+    const int rtpPort = strtol(argv[2], NULL, 10);
+    if (rtpPort <= 0 || rtpPort > 65535) {
+      printf("streamtest warning: unexpected port number '%s'\n", argv[2]);
+    }
+    snprintf(avctx->filename, sizeof(avctx->filename), "rtp://%s:%s", argv[1], argv[2] /* an int, e.g. 49990 */ );
     if (avio_open(&avctx->pb, avctx->filename, AVIO_FLAG_WRITE) < 0)
     {
         perror("avio_open failed");
