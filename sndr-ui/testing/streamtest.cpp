@@ -1,31 +1,19 @@
 /*
-    Synthesize a video signal, and stream it over SDP
+    Synthesize a video signal, and emit it as an SDP stream
     ( http://en.wikipedia.org/wiki/Session_Description_Protocol ).
 
     Usage:
-        ./streamtest &
+        ./streamtest 127.0.0.1 1234 foo.sdp &
 
-    cat > myStream.sdp
-    v=0
-    o=- 0 0 IN IP4 127.0.0.1
-    s=No Name
-    c=IN IP4 127.0.0.1
-    t=0 0
-    a=tool:libavformat 55.2.100
-    m=video 49990 RTP/AVP 96
-    a=rtpmap:96 H264/90000
-    a=fmtp:96 packetization-mode=1
-    ^D
-    # The values 127.0.0.1 and 49990 must agree with argv[1] and argv[2].
-
-    To play what streamtest streams:
-	ffplay -i myStream.sdp
-	vlc myStream.sdp	# causes errors
+    To play the stream:
+	Linux:   ffplay foo.sdp
+	Windows: right-click foo.sdp, open with ffplay.
 */
 
 #include <cstdio>
 #include <stdint.h>
 #include <unistd.h>
+#include <fstream>
 #include <cassert>
 
 // Workaround for libavutil/common.h:170:47: error: ‘UINT64_C’ was not declared in this scope
@@ -43,7 +31,6 @@ const int WIDTH = 320;
 const int HEIGHT = 240;
 const int FPS = 30;
 const int BITRATE = 400000;
-
 
 struct AVFormatContext* avctx;
 struct x264_t* encoder;
@@ -128,8 +115,8 @@ void stream_frame(uint8_t* payload, int size)
 
 int main(int argc, char* argv[])
 {
-    if (argc != 3) {
-      printf("usage: streamtest dottedquad port\n");
+    if (argc != 4) {
+      printf("usage: streamtest dottedquad port out.sdp\n");
       return -1;
     }
 
@@ -178,6 +165,34 @@ int main(int argc, char* argv[])
         return 1;
     }
     struct AVStream* stream = avformat_new_stream(avctx, NULL /* pCodecCtx->codec isn't available yet */);
+
+    // Extract localhost_dotted_quad from ifconfig command's second line of output.
+    FILE *fp = popen("/sbin/ifconfig eth0", "r");
+    char buf[800];
+    fgets(buf, 800, fp);
+    fgets(buf, 800, fp);
+    pclose(fp);
+    char* pchBgn = strchr(buf, ':');
+    char* pchEnd = strchr(pchBgn+1, ' ');
+    *pchEnd = '\0';
+    const char* localhost_dotted_quad = pchBgn+1;
+
+    // Emit .sdp file for player to access stream.
+    std::ofstream sdp;
+    sdp.open(argv[3]);
+    sdp << "\
+v=0\n\
+o=- 0 0 IN IP4 " << argv[1] << "\n\
+s=Name Of My Stream\n\
+c=IN IP4 " << localhost_dotted_quad << "\n\
+t=0 0\n\
+a=tool:libavformat 55.2.100\n\
+m=video " << argv[2] << " RTP/AVP 96\n\
+a=rtpmap:96 H264/90000\n\
+a=fmtp:96 packetization-mode=1\n\
+";
+    sdp.close();
+
 
     // Initalize codec.
     pCodecCtx = stream->codec;
