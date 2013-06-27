@@ -1,7 +1,6 @@
 #include "aufeat.h"
 #include "optparse.h"
 #include <iostream>
-#include "aquat.h"
 
 extern int ffmpeg_init();
 extern bool ffmpeg_open(const std::string& filename);
@@ -9,9 +8,10 @@ extern bool ffmpeg_eof();
 extern bool ffmpeg_read(array<double> &p);
 extern double ffmpeg_samplerate();
 
+#include "videostream.h"
+
 int main(int argc, const char **argv)
 {
-	typedef double real_t;
 
 	// Analysis options
 	const std::string fopts = getoption<std::string>("-F", argc, argv, "cdm", "Feature options"); // e.g., a1w26c14dD
@@ -24,11 +24,12 @@ int main(int argc, const char **argv)
 	const int fb = getoption<int>("-b", argc, argv, 32, "Filterbank filters");
 
 	const std::string infileName = getoption<std::string>("-i", argc, argv, "/dev/null", "Input soundfile");
+	const std::string outStream  = getoption<std::string>("-o", argc, argv, "/dev/null", "Output stream");
 
 	if (ffmpeg_init() != 0)
 	  return 1;
 
-	// Open multimedia source (video or pure audio, just a filename for now).
+	// Open multimedia source (video or pure audio, filename or URL).
 	if (!ffmpeg_open(infileName))
 	  return 1;
 	const real_t sr = ffmpeg_samplerate();
@@ -37,8 +38,8 @@ int main(int argc, const char **argv)
 	aufeat_t<real_t> feature;
 	feature.setup(sr, fft_size, fb, b, 50, sr/2, fopts);
 
-	// Open graphics terminal.
-	aq_window(1, "Features");
+	// Open video stream.
+	videostream_init("127.0.0.1", "1234", outStream);
 
 	array<real_t> x(fft_size);
 	array<real_t> y(fft_size);
@@ -52,7 +53,7 @@ int main(int argc, const char **argv)
 		// Compute feature y from buffer x.
 		feature.extract(y, x);
 
-#if 1
+#if 0
 		if (Y.empty()) {
 #define hack 15000
 			printf("resizing matrix Y to %lu by %d\n", y.size(), hack);
@@ -65,11 +66,9 @@ int main(int argc, const char **argv)
 			Y(j,i) = pow(y(j), 0.3);
 #else
 		// Export feature y to a video stream playable by ffplay.
+		videostream_array(y);
 #endif
 	}
 	std::cerr << std::endl;
-
-	// Show feature.
-	aq_image(Y.v, Y.m, Y.n);
 	return 0;
 }

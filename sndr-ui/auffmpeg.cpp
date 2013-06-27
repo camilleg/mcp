@@ -19,6 +19,7 @@ AVRational timebase;
 
 int open_input_file(const char *filename)
 {
+    avformat_network_init(); // in case filename is a URL
     int ret;
     if ((ret = avformat_open_input(&pFormatContext, filename, NULL, NULL)) < 0) {
         av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");

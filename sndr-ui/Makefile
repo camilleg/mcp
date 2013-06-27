@@ -4,8 +4,8 @@ CFLAGS := -Wall -I.. -I/usr/local/include
 # for ../array.h
 CFLAGS += -D__CHECK
 
-CFLAGS += -g -O0
-#CFLAGS += -O3
+#CFLAGS += -g -O0
+CFLAGS += -O3
 
 # These libs were found by typing "make -n" in e.g /usr/local/src/ffmpeg/doc/examples .
 LIBS_X = -lXfixes -lXext -lX11
@@ -30,20 +30,24 @@ clean:
 	rm -f aufeat filt *.o
 
 test: aufeat
-	./aufeat -i 80s.wav
-	./aufeat -i /r/mp3/marvin/esoteria/audio_18.mp3
+	./aufeat -o aufeat.sdp -i http://www.mathville.com/demoRc1/data/effects/birdchirp.mp3 &
+	sleep 0.5
+	ffplay aufeat.sdp
 
-aufeat : aufeat.o auffmpeg.o
+aufeat: aufeat.o auffmpeg.o videostream.o
 	g++ -o $@ $^ $(LIBS)
 
-filt : read-ffmpeg.o
+filt: read-ffmpeg.o
 	g++ -o $@ $^ $(LIBS)
 
-aufeat.o : aufeat.cpp ../array.h aquat.h aufeat.h optparse.h
+videostream.o: videostream.cpp ../array.h
 	g++ $(CFLAGS) -c $<
 
-auffmpeg.o : auffmpeg.cpp ../array.h
+aufeat.o: aufeat.cpp ../array.h aquat.h aufeat.h optparse.h
 	g++ $(CFLAGS) -c $<
 
-filt.o : read-ffmpeg.cpp
+auffmpeg.o: auffmpeg.cpp ../array.h
+	g++ $(CFLAGS) -c $<
+
+filt.o: read-ffmpeg.cpp
 	g++ $(CFLAGS) -c $<
