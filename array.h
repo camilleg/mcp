@@ -9,6 +9,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <cstring>
+#include <algorithm>
 
 // Multidimensional array class.
 
@@ -212,6 +213,10 @@ public:
 	size_t size() const { return m*n*k; }
 	bool empty() const { return size() == 0; }
 	bool is_vector() const { return m == size() || n == size() || k == size() || empty(); }
+
+	// Return min and max element
+	T min() const { return *std::min_element(v, v+size()); }
+	T max() const { return *std::max_element(v, v+size()); }
 
 	// Convert to a pointer, e.g. for single-value indexing the flattened elements
 	// to e.g. multiply two matrices elementwise, or pass an "iterator" to std::copy().
