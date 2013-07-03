@@ -43,7 +43,7 @@ filt: read-ffmpeg.o
 videostream.o: videostream.cpp ../array.h
 	g++ $(CFLAGS) -c $<
 
-aufeat.o: aufeat.cpp ../array.h aquat.h aufeat.h optparse.h
+aufeat.o: aufeat.cpp ../array.h aufeat.h optparse.h
 	g++ $(CFLAGS) -c $<
 
 auffmpeg.o: auffmpeg.cpp ../array.h
