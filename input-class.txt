@@ -1,7 +1,8 @@
 // Pseudocode spec for the sound input class.
 // Paris is working on the feature object.
 
-// We are going for a blocking interface instead of cumbersome callbacks for now.  The stream parameters when reading can be used to perform on the fly resampling and channel remapping.
+// Blocking interface instead of cumbersome callbacks for now.
+// When reading, use the stream parameters to resample and channel-remap on the fly.
 
 // Constructors
 
@@ -35,7 +36,9 @@ write_add( array<T> &x, long offset, int channel_mask); // sample frames
 write_add( array<T> &x, double offset, int channel_mask); // seconds
 
 // Mark's written and tested Segment and Tree, still need to write Rule.
-// A chart parser that builds upward from an abstract "Segment" type, and the Segment type currently is a dummy class containing only an integer start time, integer end time, floating point log likelihood, and integer nonterminal/senone/word index.    So, Camille, whatever representation you can give me for the audiovisual feature vectors, I'll just refactor "Segment" in order to pull it in.
+// A chart parser that builds upward from abstract Class Segment
+//   { int startTime, int endTime, float logLikelihood, int index of nonterminal/senone/word index }.
+// Mark refactors class Segment to read Camille's representation for AV feature vectors.
 // Mark's code could do:
 vector<map<int,Segment>> chartByStime, chartByEtime;
 Tree<SegmentByLl> bestfirst;
