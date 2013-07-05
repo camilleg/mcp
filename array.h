@@ -223,8 +223,6 @@ public:
 	// (Don't extend this to const pointers, because ambiguity results.)
 	operator T*() { return v; }
 
-	// todo: wrap std::max_element in a oneliner method.
-	//
 	// todo: normalize values of m,n,k so if one of them is zero, all of them are;
 	// i.e., forbid multiple representations with the same meaning (empty()).
 };
