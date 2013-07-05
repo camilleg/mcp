@@ -97,7 +97,7 @@ public:
 		}
 #else
 		// Get features of input sound using offline estimation
-		F.extract_offline( s, sz/hp, f, e);
+		F.extract_offline( f, e, s, sz/hp);
 #endif
 	
 		// Mark low-energy frames if threshold is non-zero

@@ -46,7 +46,7 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 	}
 #else
 	// Offline feature computation is in-time with input
-	F.extract_offline( s, sz/hp, f, e);
+	F.extract_offline( f, e, s, sz/hp);
 #endif
 
 	// Remove low volume samples, thr is fraction of the peak

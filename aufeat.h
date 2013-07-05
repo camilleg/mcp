@@ -370,7 +370,7 @@ public:
 				for( int k = 0 ; k < to ; k++){
 					y(to+k,i) = 0;
 					for( int j = -od ; j <= od ; j++)
-						y(to+k,i) += j*y(k,std::min( std::max( 0, i+j), y.n-1))/60;
+						y(to+k,i) += j*y(k,std::min( std::max( 0, i+j), int(y.n-1)))/60;
 				}
 	}
 };
