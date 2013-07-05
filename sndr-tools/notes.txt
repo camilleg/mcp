@@ -1,0 +1,33 @@
+﻿time ./bin/snd_track -i ../data/simpsons/simp.wav -t ../data/simpsons/homer.wav -K6 -D homer.edl -H 8 -T .2 -t 1 -m 10
+
+time ./bin/snd_track -i ../data/simpsons/simp.wav -t ../data/simpsons/homer.wav -K8 -t .1 -T .1
+
+time ./bin/snd_track -i ../data/simpsons/simp.wav -t ../data/simpsons/homer.wav -K8 -p .9999
+time ./bin/snd_track -i ../data/simpsons/simp.wav -t ../data/simpsons/marge.wav -K8 -p .9999
+
+
+time ./bin/sndr -i ~/Desktop/speaker-track/data/simpsons/simp.wav -g ~/Desktop/speaker-track/data/simpsons/homer.wav -K8 -M models/homer
+time ./bin/sndr -i ~/Desktop/speaker-track/data/simpsons/simp.wav -m models/homer-target models/homer-ubm -p .9999 -d class
+
+time ./bin/sndr -i ../sitcom/sitcom.mp3.wav -g ../sitcom/train-lily.wav -K8 -M models/lily
+
+time ./bin/sndr -i ../sitcom/sitcom.mp3.wav -g ../sitcom/train-lily.wav -K8 -H 8 -T .2 -M models/lily
+time ./bin/sndr -i ../sitcom/sitcom.mp3.wav -m models/lily-target models/lily-ubm -H 8 -f 10 -p .9999 -d class
+
+time ./bin/sndr -i ../sitcom/sitcom.mp3.wav -g ../sitcom/train-lily.wav -K8 -T .2 -t .1 -M models/lily
+time ./bin/sndr -i ../sitcom/sitcom.mp3.wav -m models/lily-target models/lily-ubm -p .9999 -f 100 -d class
+
+
+time ./bin/sndr -i ../sitcom/sitcom.mp3.wav -g ../sitcom/train-lily.wav -K8 -H 8 -T .2 -t 1 -M models/lily
+time ./bin/sndr -i ../sitcom/sitcom.mp3.wav -m models/lily-target models/lily-ubm -H 8 -t 1 -p .9999 -d class -D lily.edl
+mencoder -hr-edl-seek -edl ../sitcom/sitcom.mp3.wav.class.0.edl ../TV\ s2t/himym_s2e7.m4v.mp4 -oac lavc -ovc lavc -o lily-out.avi
+
+
+time ./bin/sndr -i ~/Desktop/speaker-track/s2t\ TV\ content/test_himym_s2e7.m4v.wav -g ~/Desktop/speaker-track/s2t\ TV\ content/train-lily.wav -K8 -H 8 -T .2 -M models/lily
+time ./bin/sndr -i ~/Desktop/speaker-track/s2t\ TV\ content/test_himym_s2e7.m4v.wav -m models/lily-target models/lily-ubm -f 10 -p .9999
+
+time ./bin/sndr -i ~/Desktop/speaker-track/s2t\ TV\ content/test_himym_s2e7.m4v.wav -g ~/Desktop/speaker-track/s2t\ TV\ content/train-lily.wav -K8 -H 8 -T .2 -M models/lily
+time ./bin/sndr -i ~/Desktop/speaker-track/s2t\ TV\ content/test_himym_s2e7.m4v.wav -m models/lily-target models/lily-ubm -f 10 -p .9999
+
+time ./bin/sndr -i ~/Desktop/speaker-track/s2t\ TV\ content/test_himym_s2e7.m4v.wav -g ~/Desktop/speaker-track/s2t\ TV\ content/train-lily.wav -K8 -H 4 -T .2 -t 1 -M models/lily
+time ./bin/sndr -i ~/Desktop/speaker-track/s2t\ TV\ content/test_himym_s2e7.m4v.wav -m models/lily-target models/lily-ubm -f 10 -w 1 -p .9999
