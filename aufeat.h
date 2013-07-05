@@ -346,31 +346,31 @@ public:
 		return sm;
 	}
 
-	// Extract features from an input, do it offline with no delta delay
+	// Extract features from an input, offline with no delta delay
 	void extract_offline( array<T> &y, array<T> &e, const array<T> &x, const int hp)
 	{
 		y.resize( o, (x.size()-sz)/hp+1);
-		e.resize( (x.size()-sz)/hp+1);
+		e.resize(    (x.size()-sz)/hp+1);
 		int ri = 0;
-		int to;
-		for( int i = 0 ; i < x.size()-sz ; i+= hp, ri++){
+		size_t to = 0;
+		for( int i = 0 ; i < int(x.size()-sz) ; i+= hp, ++ri){
 			// Make temps
-			array<T> tx( x.v+i, sz), ty;//( y.v+ri*o, o);
+			array<T> tx( x.v+i, sz), ty; //( y.v+ri*o, o);
 
 			// Get non-delta features
 			e(ri) = extract( ty, tx, false);
 			to = ty.size();
-			for( int j = 0 ; j < to ; j++)
+			for( size_t j = 0 ; j < to ; ++j)
 				y(j,ri) = ty(j);
 		}
 
 		if( delta)
 			// Compute the deltas
-			for( int i = 0 ; i < y.n ; i++)
-				for( int k = 0 ; k < to ; k++){
+			for( size_t i = 0 ; i < y.n ; ++i)
+				for( size_t k = 0 ; k < to ; ++k){
 					y(to+k,i) = 0;
-					for( int j = -od ; j <= od ; j++)
-						y(to+k,i) += j*y(k,std::min( std::max( 0, i+j), int(y.n-1)))/60;
+					for( int j = -od ; j <= od ; ++j)
+						y(to+k,i) += j*y(k,std::min( std::max( size_t(0), i+j), y.n-1))/60;
 				}
 	}
 };

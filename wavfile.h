@@ -162,7 +162,7 @@ public:
 	template <class T>
 	void write( const array<T> &p)
 	{
-		for( int i = 0 ; i < p.size() ; i++){
+		for( size_t i = 0 ; i < p.size() ; ++i){
 			const short s = 32767*p(i);
 			file.write( (char*)&s, sizeof( short));
 		}

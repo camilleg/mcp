@@ -312,7 +312,7 @@ public:
 
 		// Add the bias to first state
 		if( bias.size()){
-			if( bias.size() != S)
+			if( int(bias.size()) != S)
 				throw std::runtime_error( "clasify(): Bias vector has wrong size");
 			for( int i = 0 ; i < S ; i++)
 				for( int j = 0 ; j < N ; j++)

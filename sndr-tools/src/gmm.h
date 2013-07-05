@@ -152,7 +152,7 @@ public:
 					p(j,i) -= t;
 				lk(it) += t;
 			}
-			if( !(it%25) | it == iters-1){
+			if( !(it%25) || it == iters-1){
 				cout << "Iteration: " << it+1 << " Likelihood: " << lk(it) << endl;
 				if( it == 0)
 					aq_window( rand(), "GMM Training Likelihood");
