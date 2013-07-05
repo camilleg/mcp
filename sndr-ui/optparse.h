@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <cstring>  // for strncmp() and strcmp()
 #include <cstdlib>
 #include <vector>
 #include <typeinfo> // for typeid() with gcc 4.4+
