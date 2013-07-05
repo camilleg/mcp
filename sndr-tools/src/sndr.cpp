@@ -2,15 +2,11 @@
 // language: C++
 // author  : Paris Smaragdis
 
-
 #include "sndr.h"
 
 using namespace std;
 
-
-//
-// Timing functions
-//
+// Timer
 
 // Start counting
 double _tic_start_time;
@@ -18,7 +14,7 @@ void tic()
 {
 	struct timeval time;
 	gettimeofday( &time, NULL);
-	_tic_start_time = time.tv_sec + double( time.tv_usec)/1000000.;
+	_tic_start_time = time.tv_sec + double( time.tv_usec)/1000000.0;
 }
 
 // Get elapsed time
@@ -26,14 +22,10 @@ double toc()
 {
 	struct timeval time;
 	gettimeofday( &time, NULL);
-	double end_time = time.tv_sec + double( time.tv_usec)/1000000.;
+	double end_time = time.tv_sec + double( time.tv_usec)/1000000.0;
 	return end_time - _tic_start_time;
 }
 
-
-//
-// Main routine
-//
 
 typedef double real_t;
 
@@ -41,9 +33,7 @@ int main( int argc, const char **argv)
 {
 	AudioFeatureExtractor_t<real_t> A;
 
-	//
 	// Get options
-	//
 
 	// Model options
 	int K = getoption<int>( "-K", argc, argv, 8, "Number of Gaussians"); // Number of Gaussians per GMM
@@ -75,15 +65,12 @@ int main( int argc, const char **argv)
 	string edl = getoption<string>( "-D", argc, argv, "", "EDL file name prefix"); // EDL file name prefix
 	array<string> trg = mgetoption<string>( "-g", argc, argv, "Target file"); // Target source files (enables sound tracking)
 
-	// Start counting time
 	tic();
 
 	// Decide what needs to be done
 	if( modin.size()){
 
-		//
 		// Classify an input sound given pre-trained models
-		//
 
 		cout << "Classifying ..." << endl;
 
@@ -102,7 +89,7 @@ int main( int argc, const char **argv)
 			C.combine_models( modin, modout);
 
 		// Go through all files and perform classification
-		for( int i = 0 ; i < infile.size() ; i++){
+		for( size_t i = 0 ; i < infile.size() ; ++i){
 			wavfile_t f( infile(i), ios::in);
 			array<real_t> x( f.frames);
 			f.read_mono( x);
@@ -110,7 +97,7 @@ int main( int argc, const char **argv)
 
 			// Make output files with each sound class
 			if( dump.size()){
-				for( int j = 0 ; j < C.H.S ; j++){
+				for( int j = 0 ; j < C.H.S ; ++j){
 					char nm[512];
 					sprintf( nm, "%s.%s.%d.wav", infile(i).c_str(), dump.c_str(), j);
 					C.make_snd( x, nm, j);
@@ -119,7 +106,7 @@ int main( int argc, const char **argv)
 
 			// Make EDL file
 			if( edl.size()){
-				for( int j = 0 ; j < C.H.S ; j++){
+				for( int j = 0 ; j < C.H.S ; ++j){
 					char nm[512];
 					sprintf( nm, "%s.%s.%d.edl", infile(i).c_str(), edl.c_str(), j);
 					C.make_edl( string( nm), j);
@@ -130,15 +117,13 @@ int main( int argc, const char **argv)
 
 	}else if( trg.size()){
 
-		//
 		// Learn to track a sound
-		//
 
 		cout << "Learning ..." << endl;
 		
 		// Add all the example sounds in the dictionary
 		AudioFeatures_t<real_t> F( A);
-		for( int i = 0 ; i < infile.size() ; i++){
+		for( size_t i = 0 ; i < infile.size() ; ++i){
 			cout << "Learning from " << infile(i) << endl;
 			wavfile_t f( infile(i), ios::in);
 			array<real_t> x( f.frames);
@@ -153,7 +138,7 @@ int main( int argc, const char **argv)
 
 		// Add all the target sounds in the dictionary
 		F.clear();
-		for( int i = 0 ; i < trg.size() ; i++){
+		for( size_t i = 0 ; i < trg.size() ; ++i){
 			cout << "Learning from " << trg(i) << endl;
 			wavfile_t f( trg(i), ios::in);
 			array<real_t> x( f.frames);
@@ -168,15 +153,13 @@ int main( int argc, const char **argv)
 
 	}else{
 			
-		//
 		// Learn a model from a bunch of example sounds
-		//
 
 		cout << "Learning ..." << endl;
 
 		// Add all the example sounds in the dictionary
 		AudioFeatures_t<real_t> F( A);
-		for( int i = 0 ; i < infile.size() ; i++){
+		for( size_t i = 0 ; i < infile.size() ; ++i){
 			wavfile_t f( infile(i), ios::in);
 			array<real_t> x( f.frames);
 			f.read_mono( x);
@@ -189,6 +172,5 @@ int main( int argc, const char **argv)
 		M.save( modout);
 	}
 
-	// Time?
 	cout << "Done in " << toc() << " sec" << endl;
 }

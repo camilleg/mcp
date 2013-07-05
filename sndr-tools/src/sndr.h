@@ -104,13 +104,13 @@ public:
 		if( thr){
 			// Get peak volume
 			T pk = 0;
-			for( int i = 0 ; i < e.size() ; i++)
+			for( size_t i = 0 ; i < e.size() ; ++i)
 				pk = max( pk, e(i));
 			
 			// Find passable frames
 			p.resize( e.size());
 			int pc = 0;
-			for( int i = 0 ; i < e.size() ; i++){
+			for( size_t i = 0 ; i < e.size() ; ++i){
 				p(i) = e(i) >= thr*pk;
 				pc += p(i);
 			}
@@ -119,16 +119,16 @@ public:
 			if( thrm){
 				// Back up the data
 				array<T> f2( f.m, f.n);
-				for( int i = 0 ; i < f.size() ; i++)
+				for( size_t i = 0 ; i < f.size() ; ++i)
 					f2(i) = f(i);
 				
 				// Keep only the loud parts
 				f.resize( F.o, pc);
-				for( int i = 0, j = 0 ; i < e.size() ; i++){
+				for( size_t i = 0, j = 0 ; i < e.size() ; ++i){
 					if( p(i)){
-						for( int k = 0 ; k < F.o ; k++)
+						for( int k = 0 ; k < F.o ; ++k)
 							f(k,j) = f2(k,i);
-						j++;
+						++j;
 					}
 				}
 				std::cout << "Volume trimmed from " << f2.n << " frames to " << f.n << " frames" << std::endl;
@@ -141,15 +141,15 @@ public:
 		if( av > 1){
 			// Back up the data
 			array<T> f2( f.m, f.n);
-			for( int i = 0 ; i < f.size() ; i++)
+			for( size_t i = 0 ; i < f.size() ; ++i)
 				f2(i) = f(i);
 			
 			// Start averaging
 			f.resize( F.o, f.n/av);
-			for( int i = 0 ; i < f.m ; i++)
-				for( int j = 0 ; j < f.n ; j++){
+			for( size_t i = 0 ; i < f.m ; ++i)
+				for( size_t j = 0 ; j < f.n ; ++j){
 					f(i,j) = 0;
-					for( int k = 0 ; k < av ; k++)
+					for( int k = 0 ; k < av ; ++k)
 						if( j+k < f2.n)
 							f(i,j) += f2(i,j+k);
 					f(i,j) /= av;
@@ -213,8 +213,8 @@ public:
 		int del = F.fopts.find( 'd') != std::string::npos;
 		C.resize( fs-del*5*D.size(), D.front().n);
 		while( D.size()){
-			for( int k = del*5 ; k < D.front().m ; k++, ck++)
-				for( int j = 0 ; j < D.front().n ; j++)
+			for( unsigned int k = del*5 ; k < D.front().m ; ++k, ++ck)
+				for( unsigned int j = 0 ; j < D.front().n ; ++j)
 					C(ck,j) = D.front()(k,j);
 			D.pop_front();
 			S.pop_front();
@@ -377,7 +377,7 @@ public:
 	{
 		// Load models in a temporary array
 		std::list<AudioModel_t<T> > Al;
-		for( int i = 0 ; i < f.size() ; i++){
+		for( size_t i = 0 ; i < f.size() ; ++i){
 			std::cout << f(i) << std::endl;
 			Al.push_back( AudioModel_t<T>( F));
 			Al.back().load( f(i));
@@ -396,7 +396,8 @@ public:
 		::combine( H, (*Al.begin()).G, (*Al.end()).G, 1.-trans, 1.-trans);
 #else
 		// Pack all GMMs in a HMM
-		int M, ai = 0;
+		int M = -1;
+		int ai = 0;
 		for( typename std::list<AudioModel_t<T> >::iterator A = Al.begin() ; A != Al.end() ; ++A, ai++){
 			// Make sure all models are relevant
 //			if( (*A).F != F)
@@ -455,7 +456,7 @@ public:
 		}
 
 		// Bias the transitions
-		if( r.size() == H.S*H.S){
+		if( int(r.size()) == H.S*H.S){
 			std::cout << "Biasing" << std::endl;
 			for( int i = 0 ; i < H.S*H.S ; i++)
 				H.lA(i) -= r(i);
@@ -490,7 +491,7 @@ public:
 		// Relabel the silent parts to the last known class
 		if( F.thr > 0){
 			int c = 0;
-			for( int i = 0 ; i < o.size() ; i++){
+			for( size_t i = 0 ; i < o.size() ; ++i){
 				if( S(i))
 					c = o(i);
 				else
@@ -501,26 +502,26 @@ public:
 		// Pass through a median filter to smooth out sustained sections
 		if( m > 1){
 			array<int> o2( o.size());
-			for( int i = 0 ; i < o.size() ; i++)
+			for( size_t i = 0 ; i < o.size() ; ++i)
 				o2(i) = o(i);
 			int c[2];
-			for( int i = m ; i < o.size()-m ; i++){
+			for( size_t i = m ; i < o.size()-m ; ++i){
 				c[0] = c[1] = 0;
-				for( int j = -m ; j <= m ; j++)
+				for( int j = -m ; j <= m ; ++j)
 					if( o2(i+j) != -1)
-						c[o2(i+j)]++;
+						++c[o2(i+j)];
 				o(i) = mw*c[0] > c[1] ? 0 : 1;
 			}
 		}
 
-		// Show me the results
+		// Show the results
 		aq_window( rand(), "Class outputs"); aq_plotp( &o(0), o.size()); aq_close();
 		
-		// Show me the rates
+		// Show the rates
 		array<int> hs( H.S);
-		for( int j = 0 ; j != H.S ; j++)
+		for( int j = 0 ; j != H.S ; ++j)
 			hs(j) = 0;
-		for( int j = 0 ; j != o.size() ; j++)
+		for( size_t j = 0 ; j != o.size() ; ++j)
 			hs(o(j))++;
 		std::cout << "Class result histogram: " << hs << std::endl;
 	}
@@ -541,7 +542,7 @@ public:
 			e << 0 << ' ';
 			cl = true;
 		}
-		for( int i = 1 ; i < o.size() ; i++)
+		for( size_t i = 1 ; i < o.size() ; ++i)
 			if( o(i) != o(i-1)){
 				e << T(i*F.sz/F.hp)/F.srate;
 				if( !cl && o(i) == ii){
@@ -561,11 +562,11 @@ public:
 	{
 		wavfile_t sf( f, std::ios::out, 1, F.srate);
 		int N = 0;
-		for( int k = 0 ; k < o.size() ; k++)
+		for( size_t k = 0 ; k < o.size() ; ++k)
 			if( o(k) == ii){
 				array<T> tt( x.v+k*F.sz/F.hp, F.sz/F.hp);
 				sf.write( tt);
-				N++;
+				++N;
 			}
 		std::cout << "Dumped to " << f << ", " << N << " frames out of " << o.size() << std::endl;
 	}

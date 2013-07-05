@@ -40,7 +40,7 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 	// Get features of input sound
 	// real-time algorithm has a delay of 4 frames when computing deltas
 	f.resize( F.o, s.size()/sz);
-	for( int i = 0, j = 0 ; i < s.size()-sz ; i+=sz, j++){
+	for( int i = 0, j = 0 ; i < s.size()-sz ; i+=sz, ++j){
 		array<real_t> st( s.v+i, sz), ft( f.v+j*F.o, F.o);
 		e(j) = F.extract( st, ft);
 	}
@@ -53,13 +53,13 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 	if( thr){
 		// Get peak volume
 		real_t pk = 0;
-		for( int i = 0 ; i < e.size() ; i++)
+		for( size_t i = 0 ; i < e.size() ; ++i)
 			pk = max( pk, e(i));
 
 		// Find passable frames
 		p.resize( e.size());
 		int pc = 0;
-		for( int i = 0 ; i < e.size() ; i++){
+		for( size_t i = 0 ; i < e.size() ; ++i){
 			p(i) = e(i) >= thr*pk;
 			pc += p(i);
 		}
@@ -68,16 +68,16 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 		if( thrm){
 			// Back up the data
 			array<real_t> f2( f.m, f.n);
-			for( int i = 0 ; i < f.size() ; i++)
+			for( size_t i = 0 ; i < f.size() ; ++i)
 				f2(i) = f(i);
 
 			// Keep only the loud parts
 			f.resize( F.o, pc);
-			for( int i = 0, j = 0 ; i < e.size() ; i++){
+			for( size_t i = 0, j = 0 ; i < e.size() ; ++i){
 				if( p(i)){
-					for( int k = 0 ; k < F.o ; k++)
+					for( int k = 0 ; k < F.o ; ++k)
 						f(k,j) = f2(k,i);
-					j++;
+					++j;
 				}
 			}
 			cout << "Volume trimmed from " << f2.n << " frames to " << f.n << " frames" << endl;
@@ -90,15 +90,15 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 	if( av > 1){
 		// Back up the data
 		array<real_t> f2( f.m, f.n);
-		for( int i = 0 ; i < f.size() ; i++)
+		for( size_t i = 0 ; i < f.size() ; ++i)
 			f2(i) = f(i);
 
 		// Start averaging
 		f.resize( F.o, f.n/av);
-		for( int i = 0 ; i < f.m ; i++)
-			for( int j = 0 ; j < f.n ; j++){
+		for( size_t i = 0 ; i < f.m ; ++i)
+			for( size_t j = 0 ; j < f.n ; ++j){
 				f(i,j) = 0;
-				for( int k = 0 ; k < av ; k++)
+				for( int k = 0 ; k < av ; ++k)
 					if( j+k < f2.n)
 						f(i,j) += f2(i,j+k);
 				f(i,j) /= av;
@@ -169,12 +169,12 @@ int learn( const array<real_t> &in, const array<real_t> &s, int K, int it, array
 	H.is.resize( M, H.K, H.S);
 
 	// Copy the GMMs over to the HMM states
-	for( int k = 0 ; k < G1.K ; k++){
+	for( int k = 0 ; k < G1.K ; ++k){
 		H.c(k,0) = G1.c(k);
 		H.c(k,1) = G2.c(k);
 		H.ldt(k,0) = G1.ldt(k);
 		H.ldt(k,1) = G2.ldt(k);
-		for( int i = 0 ; i < M ; i++){
+		for( int i = 0 ; i < M ; ++i){
 			H.m(i,k,0) = G1.m(i,k);
 			H.is(i,k,0) = G1.is(i,k);
 			H.m(i,k,1) = G2.m(i,k);
@@ -197,11 +197,11 @@ int learn( const array<real_t> &in, const array<real_t> &s, int K, int it, array
 	H.lPi(1) = log( .5);
 
 	// Norm the priors
-	for( int i = 0 ; i < H.S ; i++){
+	for( int i = 0 ; i < H.S ; ++i){
 		real_t c = 0;
-		for( int k = 0 ; k < H.K ; k++)
+		for( int k = 0 ; k < H.K ; ++k)
 			c += H.c(k,i);
-		for( int k = 0 ; k < H.K ; k++)
+		for( int k = 0 ; k < H.K ; ++k)
 			H.c(k,i) /= c;
 	}
 	cout << "Packed models in an HMM" << endl;
@@ -272,7 +272,7 @@ int main( int argc, const char **argv)
 	if( O.tgs != -1 && O.tge != -1){
 		int is = sfi.samplerate*O.tgs, ie = sfi.samplerate*O.tge;
 		targ.resize( ie-is);
-		for( int i = 0 ; i < ie-is ; i++)
+		for( int i = 0 ; i < ie-is ; ++i)
 			targ(i) = in(is+i);
 		cout << "Located target" << endl;
 	}else{
@@ -289,14 +289,14 @@ int main( int argc, const char **argv)
 
 	// Normalize the inputs
 	real_t amx = 0;
-	for( int i = 0 ; i < targ.size() ; i++)
+	for( size_t i = 0 ; i < targ.size() ; ++i)
 		amx = max( amx, targ(i));
-	for( int i = 0 ; i < targ.size() ; i++)
+	for( size_t i = 0 ; i < targ.size() ; ++i)
 		targ(i) /= amx;
 	amx = 0;
-	for( int i = 0 ; i < in.size() ; i++)
+	for( size_t i = 0 ; i < in.size() ; ++i)
 		amx = max( amx, in(i));
-	for( int i = 0 ; i < in.size() ; i++)
+	for( size_t i = 0 ; i < in.size() ; ++i)
 		in(i) /= amx;
 
 	// Start tracking performance
@@ -324,7 +324,7 @@ int main( int argc, const char **argv)
 
 	// Relabel silent parts
 	if( O.thr > 0)
-		for( int i = 0 ; i < o.size() ; i++)
+		for( size_t i = 0 ; i < o.size() ; ++i)
 			if( sl(i) == 0)
 				o(i) = -1;
 
@@ -333,26 +333,26 @@ int main( int argc, const char **argv)
 #if 1
 		cout << "Median filtering state output" << endl;
 		array<int> o2( o.size());
-		for( int i = 0 ; i < o.size() ; i++)
+		for( size_t i = 0 ; i < o.size() ; ++i)
 			o2(i) = o(i);
 		int c[2];
-		for( int i = O.m ; i < o.size()-O.m ; i++){
+		for( size_t i = O.m ; i < o.size()-O.m ; ++i){
 			c[0] = c[1] = 0;
-			for( int j = -O.m ; j <= O.m ; j++)
+			for( int j = -O.m ; j <= O.m ; ++j)
 				if( o2(i+j) != -1)
-					c[o2(i+j)]++;
+					++c[o2(i+j)];
 			o(i) = O.mw*c[0] > c[1] ? 0 : 1;
 		}
 #else
 		cout << "Lowpass filtering state output" << endl;
 		array<int> fo( o.size());
-		for( int i = O.m ; i< o.size()-O.m ; i++){
+		for( int i = O.m ; i< o.size()-O.m ; ++i){
 			fo(i) = 0;
-			for( int j = -O.m ; j <= O.m ; j++)
+			for( int j = -O.m ; j <= O.m ; ++j)
 				fo(i) += o(i+j);
 //			fo(i) += exp( -pow( 2.*j/O.m, 2)) * o(i+j);
 			}
-		for( int i = 0 ; i < o.size() ; i++)
+		for( int i = 0 ; i < o.size() ; ++i)
 			o(i) = fo(i) > O.m/4;
 #endif
 	}
@@ -376,7 +376,7 @@ int main( int argc, const char **argv)
 			e << 0 << ' ';
 			cl = true;
 		}
-		for( int i = 1 ; i < o.size() ; i++)
+		for( size_t i = 1 ; i < o.size() ; ++i)
 			if( o(i) != o(i-1)){
 				e << real_t(i*sz/O.hp)/sfi.samplerate;
 				if( !cl){
@@ -395,11 +395,11 @@ int main( int argc, const char **argv)
 	// Make an output file with target sound
 	int N = 0;
 	wavfile_t sf( O.fo, ios::out, 1, sfi.samplerate);
-	for( int i = 0 ; i < o.size() ; i++)
+	for( size_t i = 0 ; i < o.size() ; ++i)
 		if( o(i) > stth){
 			array<real_t> tt( in.v+i*int(sz/O.hp), sz/O.hp);
 			sf.write( tt);
-			N++;
+			++N;
 		}
 	cout << "Dumped to " << O.fo << ", " << N << " frames out of " << o.size() << endl;
 }
