@@ -3,7 +3,8 @@ CXX= g++
 #CXX = icpc
 
 # flags
-CXXFLAGS = -I.. -pedantic -Wall -D__NO_RAND_SEED
+CXXFLAGS = -I.. -pedantic -Wall
+CXXFLAGS += -D__NO_RAND_SEED
 ifeq ($(CXX),icpc)
 	CXXFLAGS += -xHOST -O3 -ip -no-prec-div -mdynamic-no-pic -openmp -openmp-report0 -vec-report0 -fno-alias
 else

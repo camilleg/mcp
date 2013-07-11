@@ -62,7 +62,7 @@ public:
 #ifndef __NO_RAND_SEED
 		time_t tm; time( &tm);
 		srand( tm);
-		int oiure = rand();
+		(void)rand();
 #endif
 
 		// Sort out the learning situation

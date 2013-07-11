@@ -313,7 +313,7 @@ public:
 	// Load a model from disk
 	void load( const std::string &f)
 	{
-		// load the model
+		// Load the model
 		G.load( f);
 		std::cout << "loaded model" << std::endl;
 
@@ -323,6 +323,10 @@ public:
 		std::ifstream ff( f.c_str(), std::ios::binary);
 		do{
 			ff.read( opt, 4*sizeof( char));
+			if (!ff) {
+			  std::cout << "error: only " << ff.gcount() << " of 4 chars were read.";
+			  break;
+			}
 			ff.seekg( -3, std::ios::cur);
 		}while( !ff.eof() && !(opt[0] == 'f' && opt[1] == 'e' && opt[2] == 'a' && opt[3] == 't'));
 		opt[4] = '\0';
@@ -344,7 +348,7 @@ public:
 			F.fopts = opt;
 		}
 
-		// To ensure feature class initialization
+		// Ensure feature class initialization
 		F.srate = 0;
 	}
 };

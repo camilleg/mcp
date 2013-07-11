@@ -12,12 +12,13 @@ snd=../simpsons
 set pt = "-K 8"
 set pc = "-p .9999"
 
-# Learn models
-# echo ...
+echo "Learn model."
 time $bin/sndr $pt -i $snd/simp.wav -g $snd/homer.wav -M models/homer
 
-# Find Homer
+echo
+echo "Find Homer."
 time $bin/sndr $pt -i $snd/simp.wav -g $snd/homer.wav -M models/homer
 
-# Find not-Homer
+echo
+echo "Find not-Homer."
 time $bin/sndr $pc -i $snd/simp.wav -m models/homer-target models/homer-ubm -d homer
