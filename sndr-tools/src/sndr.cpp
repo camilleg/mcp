@@ -68,11 +68,11 @@ int main( int argc, const char **argv)
 	tic();
 
 	// Decide what needs to be done
-	if( modin.size()){
+	if( !modin.empty()){
 
 		// Classify an input sound given pre-trained models
 
-		cout << "Classifying ..." << endl;
+		cout << argv[0] << ": classifying..." << endl;
 
 		AudioClassifier_t<real_t> C( A);
 
@@ -83,10 +83,14 @@ int main( int argc, const char **argv)
 		C.r = r;
 
 		// Load classifiers and combine them if necessary
-		if( modin.size() == 1)
-			C.load( modin(0));
-		else
+		if( modin.size() == 1) {
+			if (!C.load( modin(0))) {
+				cout << argv[0] << ": aborting." << endl;
+				return 1;
+			}
+		} else {
 			C.combine_models( modin, modout);
+		}
 
 		// Go through all files and perform classification
 		for( size_t i = 0 ; i < infile.size() ; ++i){
@@ -115,11 +119,10 @@ int main( int argc, const char **argv)
 
 		}
 
-	}else if( trg.size()){
+	}else if( !trg.empty()){
 
 		// Learn to track a sound
-
-		cout << "Learning ..." << endl;
+		cout << argv[0] << ": learning..." << endl;
 		
 		// Add all the example sounds in the dictionary
 		AudioFeatures_t<real_t> F( A);
@@ -152,10 +155,8 @@ int main( int argc, const char **argv)
 		Mt.save( modout + string( "-target"));
 
 	}else{
-			
 		// Learn a model from a bunch of example sounds
-
-		cout << "Learning ..." << endl;
+		cout << argv[0] << ": learning..." << endl;
 
 		// Add all the example sounds in the dictionary
 		AudioFeatures_t<real_t> F( A);
@@ -173,4 +174,5 @@ int main( int argc, const char **argv)
 	}
 
 	cout << "Done in " << toc() << " sec" << endl;
+	return 0;
 }

@@ -264,7 +264,7 @@ public:
 
 		// Learn the model
 		G.train( A.C, it);
-		std::cout << "Done training model" << std::endl;
+		std::cout << "Trained model." << std::endl;
 	}
 	
 	// Train given data and an initial model
@@ -283,16 +283,20 @@ public:
 
 		// Learn the model
 		G.train( A.C, it, Gb);
-		std::cout << "Done updating model" << std::endl;
+		std::cout << "Updated model." << std::endl;
 	}
 	
 	// Save the model to disk
-	void save( const std::string &f)
+	bool save( const std::string &f)
 	{
-		// Save the model
+		if (f.empty()) {
+		  std::cout << "error: AudioModel_t::save(\"\");" << std::endl;
+		  return false;
+		}
+
 		G.save( f);
 
-		// Be sneaky and append the feature data on the model file
+		// Sneakily append the feature data to the model file
 		std::ofstream ff( f.c_str(), std::ios::binary | std::ios::app);
 		ff.seekp( 0, std::ios::end);
 		ff.write( "feat", 4*sizeof( char));
@@ -307,15 +311,20 @@ public:
 		ff.write( (char*)&F.srate, sizeof( T));
 		ff.write( F.fopts.c_str(), F.fopts.size()*sizeof( char));
 
-		std::cout << "Saved model to " << f << std::endl;
+		std::cout << "Saved AudioModel_t model " << f << "." << std::endl;
+		return true;
 	}
 
 	// Load a model from disk
-	void load( const std::string &f)
+	bool load( const std::string &f)
 	{
+		if (f.empty()) {
+		  std::cout << "error: AudioModel_t::load(\"\");" << std::endl;
+		  return false;
+		}
 		// Load the model
 		G.load( f);
-		std::cout << "loaded model" << std::endl;
+		std::cout << "Loaded model " << f << "." << std::endl;
 
 		// Load the extra feature parameter data (if any)
 		char opt[32];
@@ -324,7 +333,7 @@ public:
 		do{
 			ff.read( opt, 4*sizeof( char));
 			if (!ff) {
-			  std::cout << "error: only " << ff.gcount() << " of 4 chars were read.";
+			  std::cout << "error: read only " << ff.gcount() << " of 4 chars from file '" << f << "'." << std::endl;
 			  break;
 			}
 			ff.seekg( -3, std::ios::cur);
@@ -350,6 +359,7 @@ public:
 
 		// Ensure feature class initialization
 		F.srate = 0;
+		return true;
 	}
 };
 
@@ -382,9 +392,15 @@ public:
 		// Load models in a temporary array
 		std::list<AudioModel_t<T> > Al;
 		for( size_t i = 0 ; i < f.size() ; ++i){
+			if (f(i).empty()) {
+			  std::cout << "AudioClassifier_t::combine() skipping empty filename." << std::endl;
+			  continue;
+			}
 			std::cout << f(i) << std::endl;
 			Al.push_back( AudioModel_t<T>( F));
-			Al.back().load( f(i));
+			if (!Al.back().load( f(i))) {
+			  std::cout << "AudioClassifier_t::combine() failed to load model '" << f(i) << "'." << std::endl;
+			}
 		}
 
 		// Combine them
@@ -576,10 +592,13 @@ public:
 	}
 
 	// Load preexisting HMM model (potentially with feature info)
-	void load( const std::string &modin)
+	bool load( const std::string &modin)
 	{
 		// Load the HMM first
-		H.load( modin);
+		if (!H.load( modin)) {
+		  std::cout << "failed to load HMM '" << modin << "'." << std::endl;
+		  return false;
+		}
 
 		// Load the extra feature parameter data (if any)
 		char opt[32];
@@ -602,20 +621,23 @@ public:
 			ff.read( (char*)&F.fhi, sizeof( T));
 			ff.read( (char*)&F.thr, sizeof( T));
 			ff.read( (char*)&F.srate, sizeof( T));
-//			int tbs;
-//			ff.read( (char*)&tbs, sizeof( int));
-//			if( tbs > 0){
-//				bias.resize( tbs);
-//				ff.read( (char*)bias.v, bias.size()*sizeof( T));
-//			}
+#if 0
+			int tbs;
+			ff.read( (char*)&tbs, sizeof( int));
+			if( tbs > 0){
+				bias.resize( tbs);
+				ff.read( (char*)bias.v, bias.size()*sizeof( T));
+			}
+#endif
 			while( !ff.eof())
 				ff.read( opp++, sizeof( char));
 			*--opp = '\0';
 			F.fopts = opt;
 		}
 
-		// To ensure feature class initialization
+		// Ensure feature class initialization.
 		F.srate = 0;
+		return true;
 	}
 
 	// Combine multiple sound model files into an HMM model file (and pack in the feature info as well)

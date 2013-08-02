@@ -493,74 +493,92 @@ public:
 	}
 
 	// Save the model
-	void save( std::string fn)
+	void save( const std::string& filename)
 	{
 		using namespace std;
-		ofstream f( fn.c_str(), ios::out | ios::binary);
+		ofstream f( filename.c_str(), ios::out | ios::binary);
 		
-		// Write the number of states
+		// number of states
 		f.write( (char*)&S, sizeof( int));
 
-		// Write initial log probabilities
+		// initial log probabilities
 		f.write( (char*)&lPi(0), S*sizeof( T));
 
-		// Write log transition matrix
+		// log transition matrix
 		f.write( (char*)&lA(0), S*S*sizeof( T));
 
-		// Write the number of gaussians
+		// the number of gaussians
 		f.write( (char*)&K, sizeof( int));
 
-		// Write dimension
+		// dimension
 		int M = m.size()/(K*S);
 		f.write( (char*)&M, sizeof( int));
 
-		// Write priors
+		// priors
 		f.write( (char*)&c(0), K*S*sizeof( T));
 
-		// Write means
+		// means
 		f.write( (char*)&m(0), M*K*S*sizeof( T));
 
-		// Write inverse variances
+		// inverse variances
 		f.write( (char*)&is(0), M*K*S*sizeof( T));
+
+		cout << "Saved hmm_t model '" << filename << "'.\n";
 	}
 
 	// Load a model
-	void load( std::string fn)
+	bool load( const std::string& filename)
 	{
 		using namespace std;
-		ifstream f( fn.c_str(), ios::in | ios::binary);
+		ifstream f( filename.c_str(), ios::in | ios::binary);
+		// todo: error handling
 		
-		// Read the number of states
+		// number of states
 		f.read( (char*)&S, sizeof( int));
+		if (S <= 0) {
+		  cout << "Problem loading HMM File '" << filename << "'.\n";
+		  throw std::runtime_error( "load(): nonpositive number of states");
+		  return false;
+		}
 
-		// Read initial log probabilities
+		// initial log probabilities
 		lPi.resize( S);
 		f.read( (char*)&lPi(0), S*sizeof( T));
 
-		// Read log transition matrix
+		// log transition matrix
 		lA.resize( S, S);
 		f.read( (char*)&lA(0), S*S*sizeof( T));
 
-		// Read the number of gaussians
+		// the number of gaussians
 		f.read( (char*)&K, sizeof( int));
+		if (K <= 0) {
+		  cout << "Problem loading HMM File '" << filename << "'.\n";
+		  throw std::runtime_error( "load(): nonpositive number of gaussians");
+		  return false;
+		}
 
-		// Read dimension
-		int M = m.size()/(K*S);
+		// dimension
+		const int M = m.size()/(K*S);
+		if (M <= 0) {
+		  cout << "Problem loading HMM File '" << filename << "'.\n";
+		  throw std::runtime_error( "load(): nonpositive number of dimensions");
+		  return false;
+		}
 		f.read( (char*)&M, sizeof( int));
 
-		// Read priors
+		// priors
 		c.resize( K, S);
 		f.read( (char*)&c(0), K*S*sizeof( T));
 
-		// Read means
+		// means
 		m.resize( M, K, S);
 		f.read( (char*)&m(0), M*K*S*sizeof( T));
 
-		// Read inverse variances
+		// inverse variances
 		is.resize( M, K, S);
 		f.read( (char*)&is(0), M*K*S*sizeof( T));
 
-		// Get the determinants
+		// Compute the determinants.
 		ldt.resize( K, S);
 		for( int s = 0 ; s < S ; s++)
 			for( int k = 0 ; k < K ; k++){
@@ -568,6 +586,7 @@ public:
 				for( int i = 0 ; i < M ; i++)
 					ldt(k,s) += log( is(i,k,s));
 			}
+		return true;
 	}
 
 };
