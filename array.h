@@ -6,10 +6,11 @@
 #ifndef __ARRAY_H__
 #define __ARRAY_H__
 
+#include <algorithm>
+#include <cassert>
+#include <cstring>
 #include <iostream>
 #include <stdexcept>
-#include <cstring>
-#include <algorithm>
 
 // Multidimensional array class.
 
