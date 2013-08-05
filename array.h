@@ -42,7 +42,7 @@ public:
 		catch( std::bad_alloc& ){
 			throw std::runtime_error( "array::array(): error allocating memory");
 		}
-		std::copy(b.v, b.size(), v);
+		std::copy(b.v, b.v+b.size(), v);
 		// memcpy fails when T is a std::string.  So use std::copy even if it might be slower.
 	}
 
@@ -52,7 +52,7 @@ public:
 	array<T>& operator=( const array<T>& b)
 	{
 		resize( b.m, b.n, b.k);
-		std::copy(b.v, b.size(), v);
+		std::copy(b.v, b.v+b.size(), v);
 		return *this;
 	}
 
