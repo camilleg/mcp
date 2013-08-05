@@ -42,8 +42,8 @@ public:
 		catch( std::bad_alloc& ){
 			throw std::runtime_error( "array::array(): error allocating memory");
 		}
-		memcpy(v, b.v, size() * sizeof(v[0]));
-		// std::copy is slower.  Even gcc's might call only memmove instead of memcpy.
+		std::copy(b.v, b.size(), v);
+		// memcpy fails when T is a std::string.  So use std::copy even if it might be slower.
 	}
 
 	~array() { if( !alias) delete [] v;}
@@ -52,7 +52,7 @@ public:
 	array<T>& operator=( const array<T>& b)
 	{
 		resize( b.m, b.n, b.k);
-		memcpy(v, b.v, size() * sizeof(v[0]));
+		std::copy(b.v, b.size(), v);
 		return *this;
 	}
 
@@ -175,7 +175,7 @@ public:
 			return;
 		try{
 			T* v2 = new T[i];
-			memcpy(v2, v, size() * sizeof(v[0]));
+			std::copy(v, v+size(), v2);
 			delete [] v;
 			v = v2;
 			if (empty()) m=i, n=k=1;
@@ -196,7 +196,7 @@ public:
 			throw std::runtime_error( "array::push_back(): not a vector");			
 		try{
 			T *v2 = new T[size()+1];
-			memcpy(v2, v, size() * sizeof(v[0]));
+			std::copy(v, v+size(), v2);
 			delete [] v;
 			v = v2;
 			if (empty()) m=n=k=1;
@@ -208,6 +208,12 @@ public:
 			throw std::runtime_error( "array::push_back(): error allocating memory");
 		}
 		v[size()-1] = a;
+	}
+	const T& back() const
+	{
+		if (!is_vector())
+			throw std::runtime_error( "array::back(): not a vector");			
+		return v[size()-1];
 	}
 
 	// Number of elements
