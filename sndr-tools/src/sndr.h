@@ -340,7 +340,7 @@ public:
 		}while( !ff.eof() && !(opt[0] == 'f' && opt[1] == 'e' && opt[2] == 'a' && opt[3] == 't'));
 		opt[4] = '\0';
 		if( strcmp( opt, "feat") == 0){
-			std::cout << "Found feature parameters in HMM file" << std::endl;
+			std::cout << "Found feature parameters in AudioModel_t file " << f << "." << std::endl;
 			ff.seekg( 3, std::ios::cur);
 			ff.read( (char*)&F.b, sizeof( int));
 			ff.read( (char*)&F.fb, sizeof( int));
@@ -362,7 +362,6 @@ public:
 		return true;
 	}
 };
-
 
 //
 // Multiple class combiner
@@ -396,7 +395,7 @@ public:
 			  std::cout << "AudioClassifier_t::combine() skipping empty filename." << std::endl;
 			  continue;
 			}
-			std::cout << f(i) << std::endl;
+			//std::cout << "AudioClassifier_t::combine() loaded model " << f(i) << std::endl;
 			Al.push_back( AudioModel_t<T>( F));
 			if (!Al.back().load( f(i))) {
 			  std::cout << "AudioClassifier_t::combine() failed to load model '" << f(i) << "'." << std::endl;
@@ -405,7 +404,6 @@ public:
 
 		// Combine them
 		combine( Al);
-		std::cout << "Combined" << std::endl;
 	}
 
 	// Combine multiple sound models into one classifier
@@ -588,7 +586,7 @@ public:
 				sf.write( tt);
 				++N;
 			}
-		std::cout << "Dumped to " << f << ", " << N << " frames out of " << o.size() << std::endl;
+		std::cout << "Dumped " << N << " of " << o.size() << " frames to " << f << "." << std::endl;
 	}
 
 	// Load preexisting HMM model (potentially with feature info)
@@ -610,7 +608,7 @@ public:
 		}while( !ff.eof() && !(opt[0] == 'f' && opt[1] == 'e' && opt[2] == 'a' && opt[3] == 't'));
 		opt[4] = '\0';
 		if( strcmp( opt, "feat") == 0){
-			std::cout << "Found feature parameters in HMM file" << std::endl;
+			std::cout << "HMM file " << modin << " has feature parameters." << std::endl;
 			ff.seekg( 3, std::ios::cur);
 			ff.read( (char*)&F.b, sizeof( int));
 			ff.read( (char*)&F.fb, sizeof( int));
@@ -641,13 +639,14 @@ public:
 	}
 
 	// Combine multiple sound model files into an HMM model file (and pack in the feature info as well)
-	void combine_models( const array<std::string> &modin, const std::string &modout)
+	bool combine_models( const array<std::string> &modin, const std::string &modout)
 	{
 		// Load GMM models and combine them into one HMM
 		combine( modin);
 
 		// Save the HMM
-		H.save( modout);
+		if (!H.save( modout))
+		  return false;
 
 		// Be sneaky and append the feature data on the hmm file
 		std::ofstream ff( modout.c_str(), std::ios::binary | std::ios::app);
@@ -666,6 +665,7 @@ public:
 //		ff.write( (char*)&F.bs, sizeof( int));
 //		ff.write( (char*)F.bias.v, F.bias.size()*sizeof( T));
 		ff.write( F.fopts.c_str(), F.fopts.size()*sizeof( char));
+		return true;
 	}
 };
 

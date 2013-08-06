@@ -401,5 +401,5 @@ int main( int argc, const char **argv)
 			sf.write( tt);
 			++N;
 		}
-	cout << "Dumped to " << O.fo << ", " << N << " frames out of " << o.size() << endl;
+	cout << "Dumped " << N << " of " << o.size() << " frames to " << O.fo << "." << endl;
 }
