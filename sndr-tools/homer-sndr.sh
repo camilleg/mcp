@@ -16,10 +16,11 @@ set pc = "-p .9999"
 echo "Learn model."
 $bin/sndr $pt -i $snd/simp.wav -g $snd/homer.wav -M models/homer
 
-echo
-echo "Find Homer."
-$bin/sndr $pt -i $snd/simp.wav -g $snd/homer.wav -M models/homer
+# This command is the same as "Learn model."
+#echo
+#echo "Find Homer."
+#$bin/sndr $pt -i $snd/simp.wav -g $snd/homer.wav -M models/homer
 
 echo
 echo "Find not-Homer."
-$bin/sndr $pc -i $snd/simp.wav -m models/homer-target models/homer-ubm -d homer
+$bin/sndr $pc -i $snd/simp.wav -m models/homer-target models/homer-ubm -M models/homer-combined -d homer
