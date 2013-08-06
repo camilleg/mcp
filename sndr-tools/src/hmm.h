@@ -33,7 +33,6 @@ public:
 	// log sum
 	inline T lsum( T x, T y)
 	{
-		using namespace std;
 		if( fabs( x-y) > 30)
 			return max( x, y);
 		if( x == y)
@@ -44,11 +43,9 @@ public:
 	// Learn data
 	void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
 	{
-		using namespace std;
-
 		// Input dims are reversed
-		int M = x.n, N = x.m;
-		cout << "input is " << M << 'x' << N << endl;
+		const int M = x.n, N = x.m;
+		std::cout << "input is " << M << 'x' << N << std::endl;
 
 		// Setup state model parameters
 		ldt.resize( K, S);
@@ -62,39 +59,39 @@ public:
 		if( H.S == 0){
 
 			// Initial values for Gaussians
-			for( int s = 0 ; s < S ; s++){
-				for( int k = 0 ; k < K ; k++){
+			for( int s = 0; s < S; ++s){
+				for( int k = 0; k < K; ++k){
 					ldt(k,s) = 0;
-					c(k,s) = 1./K;
-					for( int i = 0 ; i < M ; i++){
-						m(i,k,s) = T( rand())/RAND_MAX - .5;
-						is(i,k,s) = .1;
+					c  (k,s) = 1./K;
+					for( int i = 0; i < M; ++i){
+						m (i,k,s) = T( rand())/RAND_MAX - 0.5;
+						is(i,k,s) = 0.1;
 						ldt(k,s) += log( is(i,k,s));
 					}
 				}
 			}
 
 			// Initial values for initial and transition probabilities
-			for( int s = 0 ; s < S ; s++)
+			for( int s = 0; s < S; ++s)
 				lPi(s) = log( 1./S);
-			for( int i = 0 ; i < S ; i++)
-				for( int j = 0 ; j < S ; j++)
+			for( int i = 0; i < S; ++i)
+				for( int j = 0; j < S; ++j)
 					lA(i,j) = log( T(rand())/RAND_MAX);
-			for( int i = 0 ; i < S ; i++){
+			for( int i = 0; i < S; ++i){
 				T ls = lA(i,0);
-				for( int j = 0 ; j < S ; j++)
+				for( int j = 0; j < S; ++j)
 					ls = lsum( ls, lA(i,j));
-				for( int j = 0 ; j < S ; j++)
+				for( int j = 0; j < S; ++j)
 						lA(i,j) = lA(i,j) - ls;
 			}
 		}else{
 			
 			// Copy values for Gaussians
-			for( int s = 0 ; s < S ; s++){
-				for( int k = 0 ; k < K ; k++){
+			for( int s = 0; s < S; ++s){
+				for( int k = 0; k < K; ++k){
 					ldt(k,s) = H.ldt(k,s);
 					c(k,s) = H.c(k,s);
-					for( int i = 0 ; i < M ; i++){
+					for( int i = 0; i < M; ++i){
 						m(i,k,s) = H.m(i,k,s);
 						is(i,k,s) = H.is(i,k,s);
 					}
@@ -102,9 +99,9 @@ public:
 			}
 
 			// Copy values for initial and transition probabilities
-			for( int i = 0 ; i < S ; i++){
+			for( int i = 0; i < S; ++i){
 				lPi(i) = H.lPi(i);
-				for( int j = 0 ; j < S ; j++)
+				for( int j = 0; j < S; ++j)
 					lA(i,j) = H.lA(i,j);
 			}
 		}
@@ -120,7 +117,7 @@ public:
 		array<T> lk( iters);
 
 		// Start iterating
-		for( int it = 0 ; it < iters ; it++){
+		for( int it = 0; it < iters; ++it){
 		
 			//
 			// Expectation step
@@ -142,7 +139,7 @@ public:
 			// Get overall state likelihoods
 			for( int s = 0 ; s < S ; s++)
 				for( int j = 0 ; j < N ; j++){
-					T tp = log( 0.);
+					T tp = log( 0.0);
 					for( int k = 0 ; k < K ; k++)
 						tp = lsum( tp, q(j,k,s));
 					lp(s,j) = tp;
@@ -153,7 +150,7 @@ public:
 				la(i,0) = lPi(i) + lp(i,0);
 			for( int t = 0 ; t < N-1 ; t++)
 				for( int j = 0 ; j < S ; j++){
-					T ls = log( 0.);
+					T ls = log( 0.0);
 					for( int i = 0 ; i < S ; i++)
 						ls = lsum( ls, la(i,t) + lA(i,j));
 					la(j,t+1) = ls + lp(j,t+1);
@@ -161,11 +158,11 @@ public:
 
 			// Get betas
 			for( int i = 0 ; i < S ; i++)
-				lb(i,N-1) = log( 0.);
+				lb(i,N-1) = log( 0.0);
 			lb(S-1,N-1) = 0;
 			for( int t = N-2 ; t > -1 ; t--)
 				for( int i = 0 ; i < S ; i++){
-					T ls = log( 0.);
+					T ls = log( 0.0);
 					for( int j = 0 ; j < S ; j++)
 						ls = lsum( ls, lb(j,t+1) + lA(i,j) + lp(j,t+1));
 					lb(i,t) = ls;
@@ -173,9 +170,9 @@ public:
 
 			// Get Xi
 			for( int i = 0 ; i < S*S ; i++)
-				xi(i) = log( 0.);
+				xi(i) = log( 0.0);
 			for( int t = 0 ; t < N-1 ; t++){
-				T ls = log( 0.);
+				T ls = log( 0.0);
 				for( int i = 0 ; i < S ; i++)
 					for( int j = 0 ; j < S ; j++){
 						txi(i,j) = lA(i,j) + la(i,t) + lp(j,t+1) + lb(j,t+1);
@@ -187,7 +184,7 @@ public:
 
 			// Get gamma
 			for( int j = 0 ; j < N ; j++){
-				T ls = log( 0.);
+				T ls = log( 0.0);
 				for( int s = 0 ; s < S ; s++)
 					ls = lsum( ls, la(s,j)+lb(s,j));
 				for( int s = 0 ; s < S ; s++){
@@ -198,16 +195,16 @@ public:
 			}
 
 			// Get overall likelihood
-			lk(it) = log( 0.);
+			lk(it) = log( 0.0);
 			for( int i = 0 ; i < S ; i++)
 				lk(it) = lsum( lk(it), la(i,N-1));
 			if( 1){ //( !((it+1)%25) | it == iters-1){
-				cout << "Iteration: " << it+1 << " Likelihood: " << lk(it) << endl;
+				std::cout << "Iteration: " << it+1 << " Likelihood: " << lk(it) << std::endl;
 				if( it == 0)
 					aq_window( rand(), "HMM Training Likelihood");
 				aq_plot( &lk(0), it);
 				char ts[64]; sprintf( ts, "Iteration: %d, Likelihood: %.2f", it, lk(it));
-				aq_text( ts, .5, 1./15);
+				aq_text( ts, 0.5, 1./15);
 			}
 
 			// Get out of log domain
@@ -221,7 +218,7 @@ public:
 
 			// Initial probabilities
 			for( int s = 0 ; s < S ; s++){
-				T tp = log( .0);
+				T tp = log( 0.0);
 				for( int i = 0 ; i < K ; i++)
 					tp = lsum( tp, log( g(0,i,s)));
 				lPi(s) = tp;
@@ -229,7 +226,7 @@ public:
 
 			// Transition matrix
 			for( int i = 0 ; i < S ; i++){
-				T ls = log( 0.);
+				T ls = log( 0.0);
 				for( int j = 0 ; j < S ; j++)
 					ls = lsum( ls, xi(i,j));
 				for( int j = 0 ; j < S ; j++)
@@ -290,8 +287,7 @@ public:
 	// Classify based on an known HMM
 	void classify( const array<T> &x, array<int> &q, array<T> &bias = array<T>(), int ist = -1)
 	{
-		using namespace std;
-		int M = x.n, N = x.m;
+		const int M = x.n, N = x.m;
 
 		// Get state probabilities
 		array<T> lB( S, N);
@@ -329,8 +325,7 @@ public:
 	// Viterbi decoding
 	void viterbi( const array<T> &lB, array<int> &q, int ist = -1)
 	{
-		using namespace std;
-		int N = lB.n;
+		const int N = lB.n;
 
 		// Temp space
 		array<T> d( S, 2);
@@ -340,8 +335,8 @@ public:
 		array<double> nlPi(S);
 		if( ist != -1){
 			for( int i = 0 ; i < S ; i++)
-				nlPi(i) = log( 0.);
-			nlPi(ist) = 0.;
+				nlPi(i) = log( 0.0);
+			nlPi(ist) = 0.0;
 		}else
 			for( int i = 0 ; i < S ; i++)
 				nlPi(i) = lPi(i);
@@ -395,8 +390,7 @@ public:
 	// Short-time Viterbi decoding
 	void stviterbi( const array<T> &lB, array<int> &q)
 	{
-		using namespace std;
-		int M = lB.m, N = lB.n;
+		const int M = lB.m, N = lB.n;
 
 		// Allocate output
 		q.resize( N);
@@ -406,7 +400,6 @@ public:
 		for( int i = 0 ; i < S ; i++)
 			pp(i) = lPi(i);
 
-		// Start going at it
 		int a = 0, b = 1;
 		while( b < N){
 
@@ -427,24 +420,25 @@ public:
 				}
 			}
 
-			// If there was an advance keep it, otherwise increase window and repeat
 			if( t > 0){
+				// Keep advance
 				for( int i = 0 ; i < t ; i++)
 					q(a+i) = s(0,i);
 				for( int i = 0 ; i < S ; i++)
 					pp(i) = lA(q(a+t-1),i);
 				a += t;
 				b = a+1;
-			}else
+			}else{
+				// Increase window and repeat
 				b++;
+			}
 		}
 	}
 
 	// Interim Viterbi decoding
 	void iviterbi( const array<T> &lB, int a, int b, array<T> &lP, array<int> &q)
 	{
-		using namespace std;
-		int N = b-a;
+		const int N = b-a;
 
 		// Temp space
 		array<T> d( S, 2);
@@ -493,11 +487,21 @@ public:
 	}
 
 	// Save the model
-	void save( const std::string& filename)
+	bool save( const std::string& filename)
 	{
 		using namespace std;
+		if (filename.empty()) {
+		  cout << "Failed to save HMM file with empty filename.\n";
+		  throw runtime_error( "save(): empty filename");
+		  return false;
+		}
 		ofstream f( filename.c_str(), ios::out | ios::binary);
-		
+		if (!f) {
+		  cout << "Problem saving HMM file " << filename << ".\n";
+		  throw runtime_error( "save() failed");
+		  return false;
+		}
+
 		// number of states
 		f.write( (char*)&S, sizeof( int));
 
@@ -511,7 +515,7 @@ public:
 		f.write( (char*)&K, sizeof( int));
 
 		// dimension
-		int M = m.size()/(K*S);
+		const int M = m.size()/(K*S);
 		f.write( (char*)&M, sizeof( int));
 
 		// priors
@@ -523,21 +527,36 @@ public:
 		// inverse variances
 		f.write( (char*)&is(0), M*K*S*sizeof( T));
 
-		cout << "Saved hmm_t model '" << filename << "'.\n";
+		if (!f) {
+		  cout << "Problem saving HMM file " << filename << ".\n";
+		  throw runtime_error( "save() failed");
+		  return false;
+		}
+		cout << "Saved HMM file " << filename << ".\n";
+		return true;
 	}
 
 	// Load a model
 	bool load( const std::string& filename)
 	{
 		using namespace std;
+		if (filename.empty()) {
+		  cout << "Failed to load HMM file with empty filename.\n";
+		  throw runtime_error( "load(): empty filename");
+		  return false;
+		}
 		ifstream f( filename.c_str(), ios::in | ios::binary);
-		// todo: error handling
+		if (!f) {
+		  cout << "Problem loading HMM file '" << filename << "'.\n";
+		  throw runtime_error( "load() failed");
+		  return false;
+		}
 		
 		// number of states
 		f.read( (char*)&S, sizeof( int));
 		if (S <= 0) {
-		  cout << "Problem loading HMM File '" << filename << "'.\n";
-		  throw std::runtime_error( "load(): nonpositive number of states");
+		  cout << "Problem loading HMM file '" << filename << "'.\n";
+		  throw runtime_error( "load(): nonpositive number of states");
 		  return false;
 		}
 
@@ -552,16 +571,16 @@ public:
 		// the number of gaussians
 		f.read( (char*)&K, sizeof( int));
 		if (K <= 0) {
-		  cout << "Problem loading HMM File '" << filename << "'.\n";
-		  throw std::runtime_error( "load(): nonpositive number of gaussians");
+		  cout << "Problem loading HMM file '" << filename << "'.\n";
+		  throw runtime_error( "load(): nonpositive number of gaussians");
 		  return false;
 		}
 
 		// dimension
 		const int M = m.size()/(K*S);
 		if (M <= 0) {
-		  cout << "Problem loading HMM File '" << filename << "'.\n";
-		  throw std::runtime_error( "load(): nonpositive number of dimensions");
+		  cout << "Problem loading HMM file '" << filename << "'.\n";
+		  throw runtime_error( "load(): nonpositive number of dimensions");
 		  return false;
 		}
 		f.read( (char*)&M, sizeof( int));
@@ -578,6 +597,20 @@ public:
 		is.resize( M, K, S);
 		f.read( (char*)&is(0), M*K*S*sizeof( T));
 
+		if (!f) {
+		  cout << "Problem loading HMM file '" << filename << "'.\n";
+		  throw runtime_error( "load() failed");
+		  return false;
+		}
+		
+		// number of states
+		f.read( (char*)&S, sizeof( int));
+		if (S <= 0) {
+		  cout << "Problem loading HMM file '" << filename << "'.\n";
+		  throw runtime_error( "load(): nonpositive number of states");
+		  return false;
+		}
+
 		// Compute the determinants.
 		ldt.resize( K, S);
 		for( int s = 0 ; s < S ; s++)
@@ -593,71 +626,70 @@ public:
 
 // Combine two HMMs in a loop
 template <class T>
-void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = .5, T p2 = .5)
+void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T p2 = 0.5)
 {
-	using namespace std;
 	H.S = h1.S + h2.S;
 	H.K = h1.K;
 	if( H.K != h2.K)
 		throw std::runtime_error( "combine(): HMM state K's are incompatible");
 
-	// Allocate the model parameters
-	int M = h1.m.m;
+	// Allocate parameters
+	const int M = h1.m.m;
 	if( M != h2.m.m)
 		throw std::runtime_error( "combine(): Input sizes are incompatible");
-	H.lPi.resize( H.S);
-	H.lA.resize( H.S, H.S);
-	H.c.resize( H.K, H.S);
-	H.ldt.resize( H.K, H.S);
-	H.m.resize( M, H.K, H.S);
-	H.is.resize( M, H.K, H.S);
+	H.lPi.resize(         H.S);
+	H.lA .resize(    H.S, H.S);
+	H.c  .resize(    H.K, H.S);
+	H.ldt.resize(    H.K, H.S);
+	H.m  .resize( M, H.K, H.S);
+	H.is .resize( M, H.K, H.S);
 
-	// Copy over the model data
-	for( int s = 0 ; s < h1.S ; s++)
-		for( int k = 0 ; k < h1.K ; k++){
-			H.c(k,s) = h1.c(k,s);
+	// Copy data
+	for( int s = 0; s < h1.S; ++s)
+		for( int k = 0; k < h1.K; ++k){
+			H.c  (k,s) = h1.c  (k,s);
 			H.ldt(k,s) = h1.ldt(k,s);
-			for( int i = 0 ; i < M ; i++){
-				H.m(i,k,s) = h1.m(i,k,s);
+			for( int i = 0; i < M; ++i){
+				H.m (i,k,s) = h1.m (i,k,s);
 				H.is(i,k,s) = h1.is(i,k,s);
 			}
 		}
-	for( int s = 0 ; s < h2.S ; s++)
-		for( int k = 0 ; k < h2.K ; k++){
-			H.c(k,h1.S+s) = h2.c(k,s);
+	for( int s = 0; s < h2.S; ++s)
+		for( int k = 0; k < h2.K; ++k){
+			H.c  (k,h1.S+s) = h2.c  (k,s);
 			H.ldt(k,h1.S+s) = h2.ldt(k,s);
-			for( int i = 0 ; i < M ; i++){
-				H.m(i,k,h1.S+s) = h2.m(i,k,s);
+			for( int i = 0; i < M; ++i){
+				H.m (i,k,h1.S+s) = h2.m (i,k,s);
 				H.is(i,k,h1.S+s) = h2.is(i,k,s);
 			}
 		}
 	
 	// Make transition matrix and initial probabilities
-	for( int i = 0 ; i < H.lA.size() ; i++)
+	for( int i = 0; i < H.lA.size(); ++i)
 		H.lA(i) = -HUGE_VAL;
-	for( int i = 0 ; i < h1.S ; i++){
+	for( int i = 0; i < h1.S; ++i){
 		H.lPi(i) = h1.lPi(i);
-		for( int j = 0 ; j < h1.S ; j++)
+		for( int j = 0; j < h1.S; ++j)
 			H.lA(i,j) = h1.lA(i,j);
 	}
-	for( int i = 0 ; i < h2.S ; i++){
+	for( int i = 0; i < h2.S; ++i){
 		H.lPi(h1.S+i) = h2.lPi(i);
-		for( int j = 0 ; j < h2.S ; j++)
+		for( int j = 0; j < h2.S; ++j)
 			H.lA(h1.S+i,h1.S+j) = h2.lA(i,j);
 	}
-	H.lA(h1.S-1,h1.S) = log( p1);
-	H.lA(h1.S+h2.S-1,0) = log( p2);
+	H.lA(h1.S-1,      h1.S) = log( p1);
+	H.lA(h1.S+h2.S-1, 0)    = log( p2);
 
 	// Normalize them
 	T ps = 0;
-	for( int i = 0 ; i < H.S ; i++)
+	for( int i = 0; i < H.S; ++i)
 		ps += exp( H.lPi(i));
-	for( int i = 0 ; i < H.S ; i++)
+	for( int i = 0; i < H.S; ++i)
 		H.lPi(i) = log( exp( H.lPi(i))/ps);
 
-	for( int i = 0 ; i < h1.S ; i++)
+	for( int i = 0; i < h1.S; ++i)
 		H.lA(h1.S-1,i) += log( (1.-p1));
-	for( int i = 0 ; i < h2.S ; i++)
+	for( int i = 0; i < h2.S; ++i)
 		H.lA(h1.S+h2.S-1,h1.S+i) += log( (1.-p2));
 }
 
