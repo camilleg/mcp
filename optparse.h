@@ -69,8 +69,7 @@ array<T> mgetoption( const std::string& opt, int argc, const char **argv, const 
 			else
 				std::cout << "Flag " << opt << " is ";
 			for( size_t j = 0 ; j < v.size() ; ++j)
-				std::cout << v(j) << ", ";
-			std::cout << std::endl;
+				std::cout << v(j) << ((j < v.size()-1) ? ", " : ".\n");
 		}
 	}
 
