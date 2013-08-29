@@ -19,12 +19,17 @@ public:
 	int bits;
 
 	// Open a wave file
-	wavfile_t( const std::string &fn, std::ios::openmode mode = std::ios::in, unsigned int ch = 1, double sr = 16000) 
+	wavfile_t( const std::string &filename, std::ios::openmode mode = std::ios::in, unsigned int ch = 1, double sr = 16000) 
 	 : channels( ch), frames( 0), samplerate( sr), file( NULL), file_type( 0), bits( 0)
 	{
+		if (filename.empty())
+			throw std::runtime_error( "wavfile_t::wavfile_t(): empty filename.");
+
 		// Open an input file
 		if( mode == std::ios::in){
-			file.open( fn.c_str(), std::ios::in | std::ios::binary);
+			file.open( filename.c_str(), std::ios::in | std::ios::binary);
+			if (!file)
+				throw std::runtime_error( "wavfile_t::wavfile_t(): problem reading from filename.");
 
 			// at start of file
 			file.seekg( 0, std::ios::beg);
@@ -33,12 +38,12 @@ public:
 			char id[4];
 			file.read( id, 4);
 			if( memcmp( id, "RIFF", 4))
-				throw std::runtime_error( "wavfile_t::wavfile_t(): file doesn't start with 'RIFF'");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): file doesn't start with 'RIFF'.");
 
 			file.seekg( 4, std::ios::cur); // Skip filesize ...
 			file.read( (char*)id, 4);  
 			if( memcmp( id, "WAVE", 4))
-				throw std::runtime_error( "wavfile_t::wavfile_t(): no 'WAVE' id");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): no 'WAVE' id.");
 
 			unsigned int i, r, a;
 			signed short c, s, f;
@@ -51,7 +56,7 @@ public:
 				file.read( (char*)&i, sizeof( unsigned int));
 				file.seekg( i, std::ios::cur);
 			}
-			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'fmt ' chunk");
+			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'fmt ' chunk.");
 
 		fmt_code:
 			// Get important parameters
@@ -68,7 +73,7 @@ public:
 
 			// Get sample format
 			if( (f > 1) && (s != 16 && s != 8 && s != 32))
-				throw std::runtime_error( "wavfile_t::wavfile_t(): unexpected format (not PCM float, 16-bit or 8-bit)");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): unexpected format (not PCM float, 16-bit or 8-bit).");
 
 			// Move to first sample
 			file.seekg( i-16, std::ios::cur);
@@ -79,7 +84,7 @@ public:
 				file.read( (char*)&i, sizeof( unsigned int));
 				file.seekg( i, std::ios::cur);
 			}
-			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'data' chunk");
+			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'data' chunk.");
 
 		data_code:
 			// Read number of samples
@@ -90,7 +95,9 @@ public:
 
 		// Open an output file
 		}else if( mode == std::ios::out){
-			file.open( fn.c_str(), std::ios::out | std::ios::binary);
+			file.open( filename.c_str(), std::ios::out | std::ios::binary);
+			if (!file)
+				throw std::runtime_error( "wavfile_t::wavfile_t(): problem writing to file.");
 			unsigned int i, s;
 
 			// Write header
