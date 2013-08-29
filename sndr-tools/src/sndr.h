@@ -67,6 +67,7 @@ public:
 			(tsz == A.tsz) && (flo == A.flo) && (fhi == A.fhi) && (thr == A.thr) &&
 			(srate == A.srate) && (fopts.compare( A.fopts) == 0);
 	}
+	bool operator!=( const AudioFeatureExtractor_t<T> &A) const { return !(*this == A); }
 									
 	// Extract sound features
 	void operator()( const array<T> &s, int sr, array<T> &f, array<int> &p, bool thrm = false)
@@ -213,18 +214,19 @@ public:
 	void clear()
 	{
 		C.resize( 0);
-		while( D.size())
+		while( !D.empty())
 			D.pop_front();
-		while( S.size())
+		while( !S.empty())
 			S.pop_front();
 	}
 };
 
 
-// Single class model
+// Single-class model
 template <class T>
 class AudioModel_t{
 public:
+
 #ifdef __HMM_TRAIN
 	hmm_t<T> G; // HMM model for the sound class
 #else
@@ -232,41 +234,40 @@ public:
 #endif
 	AudioFeatureExtractor_t<T> &F; // Feature extractor reference, used as a test
 
-	// Initialize
+	// Constructors
 	AudioModel_t( AudioFeatureExtractor_t<T> &_F) : F(_F) {}
-	AudioModel_t( AudioFeatureExtractor_t<T> &_F, int k) : G(k), F(_F) {}
+	AudioModel_t( AudioFeatureExtractor_t<T> &_F, const int k) : G(k), F(_F) {}
 
-	// Train given data
-	void operator()( AudioFeatures_t<T> &A, int it)
+	// Train G from data A
+	void operator()( AudioFeatures_t<T> &A, const int it)
 	{
-		// Check that data is kosher
-		//		if( A.F != F)
-		//			throw std::runtime_error( "Feature space doesn't match");
+		if( A.F != F)
+			throw std::runtime_error( "AudioModel_t trained feature space doesn't match.");
 		
 		// Consolidate features
 		A.consolidate();
 
 		// Learn the model
 		G.train( A.C, it);
-		std::cout << "Trained model." << std::endl;
+		std::cout << "Trained model in " << it << " iterations." << std::endl;
 	}
 	
-	// Train given data and an initial model
+	// Train G from data A and an initial model
 #ifdef __HMM_TRAIN
-	void operator()( AudioFeatures_t<T> &A, int it, hmm_t<T> Gb)
+	void operator()( AudioFeatures_t<T> &A, const int it, hmm_t<T> Gb)
 #else
-	void operator()( AudioFeatures_t<T> &A, int it, gmm_t<T> Gb)
+	void operator()( AudioFeatures_t<T> &A, const int it, gmm_t<T> Gb)
 #endif
 	{
-		//if( A.F != F)
-		//	throw std::runtime_error( "Feature space doesn't match");
+		if( A.F != F)
+			throw std::runtime_error( "AudioModel_t model-trained feature space doesn't match.");
 		
 		// Consolidate features
 		A.consolidate();
 
 		// Learn the model
 		G.train( A.C, it, Gb);
-		std::cout << "Updated model." << std::endl;
+		std::cout << "Updated model in " << it << " iterations." << std::endl;
 	}
 	
 	// Save the model to disk
@@ -346,7 +347,7 @@ public:
 	}
 };
 
-// Multiple class combiner
+// Multiple-class combiner
 template <class T>
 class AudioClassifier_t{
 public:
@@ -469,7 +470,6 @@ public:
 				H.lA(i,j) -= ls;
 		}
 #endif
-		// Show me the transition matrix
 		std::cout << "Transition matrix is:\n" << H.lA;
 	}
 
@@ -482,7 +482,7 @@ public:
 //		F.report();
 		F( in, sr, D, S, false);
 
-		// Run the classification
+		// Classify
 		H.classify( D, o, bias);
 		std::cout << "Input is " << in.size() << " window is " << F.sz << " out is " << o.size() << std::endl;
 

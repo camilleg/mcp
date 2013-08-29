@@ -28,9 +28,15 @@ typedef double real_t;
 
 int main( int argc, const char **argv)
 {
-	AudioFeatureExtractor_t<real_t> A;
-
 	// Get options
+
+	// Filenames
+	std::string modout = getoption<std::string>( "-M", argc, argv, "", "Output model filename");
+	const std::string dump = getoption<std::string>( "-d", argc, argv, "", "Dump file prefix");
+	const array<std::string> infile = mgetoption<std::string>( "-i", argc, argv, "Input soundfile(s)");
+	const array<std::string> modin = mgetoption<std::string>( "-m", argc, argv, "Input model(s)");
+	const std::string edl = getoption<std::string>( "-D", argc, argv, "", "EDL filename prefix");
+	const array<std::string> trg = mgetoption<std::string>( "-g", argc, argv, "Target file"); // Target source files (enables sound tracking)
 
 	// Model
 	const int K = getoption<int>( "-K", argc, argv, 8, "Number of Gaussians"); // per GMM
@@ -42,6 +48,7 @@ int main( int argc, const char **argv)
 	const real_t mw = getoption<real_t>( "-w", argc, argv, 1, "Bias of state output filter");
 
 	// Analysis
+	AudioFeatureExtractor_t<real_t> A;
 	A.fopts = getoption<std::string>( "-F", argc, argv, "cdm", "Feature options");
 	A.b = getoption<int>( "-n", argc, argv, 13, "Feature coefficients"); // Number of coeffs to use
 	A.flo = getoption<real_t>( "-l", argc, argv, 80, "Lowest frequency");
@@ -53,14 +60,6 @@ int main( int argc, const char **argv)
 	A.tsz = getoption<real_t>( "-t", argc, argv, 0.1, "Window size"); // in seconds
 	A.hp = getoption<int>( "-H", argc, argv, 1, "Hop size"); // window size/hp
 	A.av = getoption<int>( "-a", argc, argv, 1, "Feature averaging");
-
-	// Filenames
-	std::string modout = getoption<std::string>( "-M", argc, argv, "", "Output model filename");
-	const std::string dump = getoption<std::string>( "-d", argc, argv, "", "Dump file prefix");
-	const array<std::string> infile = mgetoption<std::string>( "-i", argc, argv, "Input soundfile(s)");
-	const array<std::string> modin = mgetoption<std::string>( "-m", argc, argv, "Input model(s)");
-	const std::string edl = getoption<std::string>( "-D", argc, argv, "", "EDL filename prefix");
-	const array<std::string> trg = mgetoption<std::string>( "-g", argc, argv, "Target file"); // Target source files (enables sound tracking)
 
 	tic();
 
