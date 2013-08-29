@@ -2,8 +2,8 @@
 
 sndr is a command-line tool that learns sound models, and then uses these
 models to classify new audio content to find specific kinds of sounds.
-It runs in three modes: learning, classifying, and (still incomplete) tracking.
-Usually you'd run sndr twice, first for learning, then for classifying.
+It runs in one of three modes: learning, classifying, and (still incomplete) tracking.
+Usually you run sndr twice, first for learning, then for classifying.
 
 
 1. Learning sound classes
@@ -16,11 +16,6 @@ parameters of the sound model.
 Feature extraction transforms the sound from a waveform to forms
 that simplify classification, such as spectrograms and mel cepstra.
 Flags, each followed by a number, define these features:
-
-    -h, -l
-    Highest and lowest frequency present in the sound, in Hz.
-    For example, use -l 100 -h 5000 to remove rumble and hiss from speech.
-    Keep the high frequency below the Nyquist frequency, of course.
 
     -t
     Frame duration in seconds.  Should be not much longer than the class,
@@ -37,6 +32,11 @@ Flags, each followed by a number, define these features:
     -t 0.1 -H 4 starts a frame four times as often.
     Default 1, often 2, rarely more than 8, traditionally a power of 2.
     Larger values create a finer-grained model, but run slower and use more memory.
+
+    -h, -l
+    Highest and lowest frequency present in the sound, in Hz.
+    For example, use -l 100 -h 5000 to remove rumble and hiss from speech.
+    Keep the high frequency below the Nyquist frequency, of course.
 
     -T
     Threshold for discarding low-energy frames (quiet pauses) from training data.
@@ -74,7 +74,7 @@ Flags, each followed by a number, define these features:
     -n
     Number of filterbanks for -F m.  Rarely used.
 
-Having defined features, sndr uses them to train models.
+After defining these features, sndr uses them to train models.
 These models are defined by other flags:
 
     -K
@@ -94,7 +94,7 @@ These models are defined by other flags:
     -e
     Number of training iterations.  Larger values increase accuracy,
     but only asymptotically.  Only increase it from the default, 50,
-    if the likelihood value doesn't converge to a compact area.
+    if the likelihood value hasn't visibly converged.
 
 Two more flags specify filenames:
 
@@ -110,30 +110,31 @@ Here are examples using all these flags, from the soundtrack to the TV show "Fri
 
     To learn the male speakers and store the model in the file "guys":
 
-	sndr -K 4 -S 8 -t 0.1 -H 2 -Fcdb0e -i chandler.wav joey.wav ross.wav -M guys
+	sndr -K 4 -S 8 -t 0.1 -H 2 -F cdb0e -i chandler.wav joey.wav ross.wav -M guys
 
     To learn the female speakers:
 
-	sndr -K 4 -S 8 -t 0.1 -H 2 -Fcdb0e -i monica.wav phoebe.wav rachel.wav -M gals
+	sndr -K 4 -S 8 -t 0.1 -H 2 -F cdb0e -i monica.wav phoebe.wav rachel.wav -M gals
 
     To learn the music and the laugh track:
 
-	sndr -K 4 -S 8 -t 0.4 -H 8 -Fcdb0e -i music.wav -M music
-	sndr -K 4 -S 8 -t 0.1 -H 2 -Fcdb0e -i laugh.wav -M laugh
+	sndr -K 4 -S 8 -t 0.4 -H 8 -F cdb0e -i music.wav -M music
+	sndr -K 4 -S 8 -t 0.1 -H 2 -F cdb0e -i laugh.wav -M laugh
 
 
 2. Classifying a new input
 
-Having trained models for some sound classes, these can track the appearance of
-these classes in a new recording.  First, features are extracted (with the same
-parameters as used during training!), and then actual classification happens.
+After running sndr to train models for some sound classes, a second run
+can use these models to detect where these classes appear in a new
+recording.  First, features are extracted (with the same parameters
+as used during training!), and then actual classification happens.
 
 Each frame of each input file is measured for how likely it belongs to each class.
 The class with the highest likelihood is assigned to that frame.
 
 If the new input includes sounds that strongly differ from all the classes,
 those sounds will nevertheless be assigned to whatever class they poorly fit.
-However, avoiding this by using very many classes will run slower,
+However, trying to avoid this by using very many classes will run slower,
 and may increase the chance of misclassification.
 
 Filename flags:
@@ -149,11 +150,11 @@ Filename flags:
     creates files in.wav.dump.x.wav, where the digit x represents each class.
 
     -D
-    Prefix for edit decision list (EDL) file.  Creates EDL files named like
-    those for -d, describing at which times each class is active.
+    Prefix for edit decision list (EDL) files.  Creates EDL files named
+    like those for -d, listing the time segments when each class is active.
 
     -g
-    Target file.  Unused.
+    Target file.  (Part of the incomplete tracking mode; currently unused.)
 
 Flags that interpret the classification results:
 
@@ -170,16 +171,16 @@ Flags that interpret the classification results:
     -H hop size.
 
     -B, -r, -w
-    Biases of likelihood, state transition, and state output filter.
-    For development only.
+    Biases for likelihood, state transition, and state output filter.
+    Only for development.
 
 Here is an example using all these flags, again from the "Friends" soundtrack.
 
     To classify in.wav using models guys, gals, laugh and music,
     with the same parameters used to train those models,
-    and with persistence 0.999:
+    and with persistence 0.99:
 
-	sndr –K 4 –S 8 –t 0.1 –H 2 –Fcdb0e –p 0.999 -i in.wav \
+	sndr –K 4 –S 8 –t 0.1 –H 2 –F cdb0e –p 0.99 -i in.wav \
 	    -m guys gals laugh music \
 	    -d seg -D edl
 
