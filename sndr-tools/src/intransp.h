@@ -3,7 +3,8 @@
 // author  : Paris Smaragdis
 
 /* Original author:
-	www.netlib.org/toms/513
+	http://www.netlib.org/toms/513
+	http://calgo.acm.org/
 	ACM Collected Algorithms
 	file	513
 	keywords	transposition in place, matrix transposition, permutation
