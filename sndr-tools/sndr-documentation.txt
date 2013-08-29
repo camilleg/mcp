@@ -1,0 +1,189 @@
+(This is adapted from Paris Smaragdis's sndr.docx by Camille Goudeseune.)
+
+sndr is a command-line tool that learns sound models, and then uses these
+models to classify new audio content to find specific kinds of sounds.
+It runs in three modes: learning, classifying, and (still incomplete) tracking.
+Usually you'd run sndr twice, first for learning, then for classifying.
+
+
+1. Learning sound classes
+
+sndr learns sound classes with either Gaussian Mixture Models (GMMs) or
+Hidden Markov Models (HMMs).  sndr needs an example recording for each
+class (say, speech).  From this it extracts features and then estimates
+parameters of the sound model.
+
+Feature extraction transforms the sound from a waveform to forms
+that simplify classification, such as spectrograms and mel cepstra.
+Flags, each followed by a number, define these features:
+
+    -l, -h
+    Lowest and highest frequency in Hz present in the sound.
+    For example, use -l 100 -h 5000 to remove rumble and hiss from speech.
+    Keep the high frequency below the Nyquist frequency, of course.
+
+    -t
+    Frame duration in seconds.  Should be not much longer than the class you
+    want to use, e.g. 0.2 seconds for a crashing sound.  If it is too long,
+    the frame includes extraneous sound that might hide the short event
+    to be classified.  If it is too short, less sound data is used,
+    reducing accuracy (as in finding music in a movie soundtrack).
+    The duration also affects the FFT used in feature transformation, so larger
+    values improve frequency resolution.  Durations from 0.01 to 1.0 are typical.
+
+    -H
+    Frame hop size.  How often a new frame starts, relative to frame duration.
+    For example, -t 0.1 -H 1 starts a tenth-second frame every 0.1 seconds;
+    -t 0.1 -H 4 starts a frame four times as often.
+    Default 1, traditionally a power of 2, rarely more than 8, often 2.
+    Larger values create a finer-grained model, but run slower and use more memory.
+
+    -T
+    Threshold for discarding low-energy frames (quiet pauses) from training data.
+    The default value, 0.0, includes all frames; 1.0 includes none.
+    0.1 to 0.3 is often useful.  Larger values bias the model to recognize
+    only loud examples (say, shouting as a subclass of speech).
+
+    -a
+    Average every subsequence of x frames, instead of using individual frames.
+    Rarely useful because it smears values.  Default 1.
+
+    -F
+    Specify features.  Instead of a number, use a string of letters from this list:
+	n : Normalize the energy of each FFT frame.
+	l : Take the log of the transform.
+	b : Use Bark scale frequency warping.
+	m : Use Mel scale frequency warping.
+	c : Use a DCT transform.
+	0 : Use DCT’s 0th coefficient.
+	e : Append each frame's energy value.
+	d : Use delta features.
+	D : Use delta-delta features.
+    The default is cdm, common in speech processing.
+    Flags 0 and e consider loudness, to avoid "hallucinations"
+    (false matches) in very quiet sections.
+    Flags b and m are good for coarse models that generalize well
+    beyond particular pitches.  Flag c improves learning from these.
+    Flags d and D include first and second derivatives, to encode
+    temporal characteristics.  Flag d is common, but D is usually overkill.
+
+    -b
+    Number of coefficients per frame, the size of the DCT transform in -F c.
+    Default 13, typically 10 to 30.
+
+    -n
+    Number of filterbanks for -F m.  Rarely used.
+
+Having defined features, sndr uses them to train models.
+These models are defined by other flags:
+
+    -K
+    Number of Gaussian components.  Larger values increase accuracy,
+    but risk false positives.  Default 8, typically 4 to 20.
+
+    -S
+    Instead of a GMM, use an HMM, with this number of states
+    (each state with as many Gaussians as specifed by -K).
+    Roughly, an HMM models temporal structure, while a GMM models only spectrum.
+    For example, distinguishing rain from an explosion requires an HMM because
+    they have similar wideband spectra, but different temporal evolution.
+    HMMs are slower, so classes with sufficiently different spectra should use GMMs instead.
+	NOTE: currently HMMs are enabled by the __HMM_TRAIN compile flag;
+	flag-based model switching is not yet implemented.
+
+    -it
+    Number of training iterations.  Larger values increase accuracy,
+    but only asymptotically.  Only increase it from the default, 50,
+    if the likelihood value doesn't converge to a compact area.
+
+Two more flags specify filenames:
+
+    -i
+    Input sound file(s) to learn a model for, e.g., -i foo.wav bar.wav.
+    These should be good representative examples, avoiding distractors like
+    ambient background noise or long pauses.
+
+    -M
+    Filename storing the learned model.
+
+Here are examples using all these flags, from the soundtrack to the TV show "Friends".
+
+    To learn the male speakers and store the model in the file "guys":
+
+	sndr -K4 -S 8 -t 0.1 -H 2 -Fcdb0e -i ross.wav joey.wav chandler.wav -M guys
+
+    To learn the female speakers:
+
+	sndr -K4 -S 8 -t 0.1 -H 2 -Fcdb0e -i monica.wav rachel.wav phoebe.wav -M gals
+
+    To learn the music and the laugh track:
+
+	sndr -K4 -S 8 -t 0.4 -H 8 -Fcdb0e -i music.wav -M music
+	sndr -K4 -S 8 -t 0.1 -H 2 -Fcdb0e -i laugh.wav -M laugh
+
+
+2. Classifying a new input
+
+Having trained models for some sound classes, these can track the appearance of
+these classes in a new recording.  First, features are extracted (with the same
+parameters as used during training!), and then actual classification happens.
+
+Each frame of each input file is measured for how likely it belongs to each class.
+The class with the highest likelihood is assigned to that frame.
+
+If the new input includes sounds that strongly differ from all the classes,
+those sounds will nevertheless be assigned to whatever class they poorly fit.
+However, avoiding this by using very many classes will run slower,
+and may increase the chance of misclassification.
+
+Filename flags:
+
+    -i
+    Input file(s), to be classified frame-by-frame.
+
+    -m
+    Learned model(s) of classes.
+
+    -d
+    Suffix for classified sound files.  For example, -i in.wav -d dump.wav
+    creates files in.wav.dump.x.wav, where the digit x represents each class.
+
+    -D
+    Prefix for edit decision list (EDL) file.  Creates EDL files named like
+    those for -d, describing at which times each class is active.
+
+    -g
+    Target file.  Unused.
+
+Flags that interpret the classification results:
+
+    -p
+    Probability of choosing the same class as the previous frame's
+    (temporal persistence).  Default 0.999, typically greater than 0.9.
+    Suppresses rapid changes between successive frames,
+    such as those due to short pauses between words.
+
+    -f
+    Length of median filter, in frames (not seconds).  Like -p, suppresses
+    rapid changes between frames.  Default 0 (no filter).  Set this to the
+    expected duration of a label, accounting for the -t frame duration and
+    -H hop size.
+
+    -B, -r, -w
+    Biases of likelihood, state transition, and state output filter.
+    For development only.
+
+Here is an example using all these flags, again from the "Friends" soundtrack.
+
+    To classify in.wav using models guys, gals, laugh and music,
+    with the same parameters used to train those models,
+    and with persistence 0.999:
+
+	sndr –K 4 –S 8 –t 0.1 –H 2 –Fcdb0e –p 0.999 -i in.wav \
+	    -m guys gals laugh music \
+	    -d seg -D edl
+
+    This creates four soundfiles, in.wav.seg.[0123].wav, each containing
+    the portions of in.wav classified as guys, gals, laugh or music.
+    This also creates four EDL files, in.wav.edl.[0123].edl,
+    denoting those portions' time segments.
