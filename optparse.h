@@ -13,8 +13,6 @@
 #include <vector>
 #include <typeinfo> // for typeid() with gcc 4.4+
 
-// Option parser
-
 template <class T> T    optassign             ( const char * )
 {
 	std::cout << typeid( T).name() << std::endl;
@@ -38,9 +36,9 @@ T getoption( const std::string& opt, int argc, const char **argv, T iv = T(), co
 			v = optassign<T>( strcmp( argv[i], opt.c_str()) == 0 ? argv[++i] : argv[i]+opt.size());
 
 			if( descr)
-				std::cout << descr << " is " << v << std::endl;
+				std::cout << descr << " is " << v << "." << std::endl;
 			else
-				std::cout << "Flag " << opt << " is " << v << std::endl;
+				std::cout << "Flag " << opt << " is " << v << "." << std::endl;
 		}
 	}
 	return v;
