@@ -17,25 +17,25 @@ Feature extraction transforms the sound from a waveform to forms
 that simplify classification, such as spectrograms and mel cepstra.
 Flags, each followed by a number, define these features:
 
-    -l, -h
-    Lowest and highest frequency in Hz present in the sound.
+    -h, -l
+    Highest and lowest frequency present in the sound, in Hz.
     For example, use -l 100 -h 5000 to remove rumble and hiss from speech.
     Keep the high frequency below the Nyquist frequency, of course.
 
     -t
-    Frame duration in seconds.  Should be not much longer than the class you
-    want to use, e.g. 0.2 seconds for a crashing sound.  If it is too long,
+    Frame duration in seconds.  Should be not much longer than the class,
+    e.g. 0.2 seconds for a crashing sound.  If it is too long,
     the frame includes extraneous sound that might hide the short event
-    to be classified.  If it is too short, less sound data is used,
+    to be classified.  If it is too short, less data is used,
     reducing accuracy (as in finding music in a movie soundtrack).
-    The duration also affects the FFT used in feature transformation, so larger
+    Also affects the FFT used in feature transformation, so larger
     values improve frequency resolution.  Durations from 0.01 to 1.0 are typical.
 
     -H
     Frame hop size.  How often a new frame starts, relative to frame duration.
     For example, -t 0.1 -H 1 starts a tenth-second frame every 0.1 seconds;
     -t 0.1 -H 4 starts a frame four times as often.
-    Default 1, traditionally a power of 2, rarely more than 8, often 2.
+    Default 1, often 2, rarely more than 8, traditionally a power of 2.
     Larger values create a finer-grained model, but run slower and use more memory.
 
     -T
@@ -50,15 +50,15 @@ Flags, each followed by a number, define these features:
 
     -F
     Specify features.  Instead of a number, use a string of letters from this list:
-	n : Normalize the energy of each FFT frame.
-	l : Take the log of the transform.
 	b : Use Bark scale frequency warping.
 	m : Use Mel scale frequency warping.
 	c : Use a DCT transform.
 	0 : Use DCT’s 0th coefficient.
-	e : Append each frame's energy value.
 	d : Use delta features.
 	D : Use delta-delta features.
+	l : Take the log of the transform.
+	e : Append each frame's energy value.
+	n : Normalize the energy of each FFT frame.
     The default is cdm, common in speech processing.
     Flags 0 and e consider loudness, to avoid "hallucinations"
     (false matches) in very quiet sections.
@@ -91,7 +91,7 @@ These models are defined by other flags:
 	NOTE: currently HMMs are enabled by the __HMM_TRAIN compile flag;
 	flag-based model switching is not yet implemented.
 
-    -it
+    -e
     Number of training iterations.  Larger values increase accuracy,
     but only asymptotically.  Only increase it from the default, 50,
     if the likelihood value doesn't converge to a compact area.
@@ -110,16 +110,16 @@ Here are examples using all these flags, from the soundtrack to the TV show "Fri
 
     To learn the male speakers and store the model in the file "guys":
 
-	sndr -K4 -S 8 -t 0.1 -H 2 -Fcdb0e -i ross.wav joey.wav chandler.wav -M guys
+	sndr -K 4 -S 8 -t 0.1 -H 2 -Fcdb0e -i chandler.wav joey.wav ross.wav -M guys
 
     To learn the female speakers:
 
-	sndr -K4 -S 8 -t 0.1 -H 2 -Fcdb0e -i monica.wav rachel.wav phoebe.wav -M gals
+	sndr -K 4 -S 8 -t 0.1 -H 2 -Fcdb0e -i monica.wav phoebe.wav rachel.wav -M gals
 
     To learn the music and the laugh track:
 
-	sndr -K4 -S 8 -t 0.4 -H 8 -Fcdb0e -i music.wav -M music
-	sndr -K4 -S 8 -t 0.1 -H 2 -Fcdb0e -i laugh.wav -M laugh
+	sndr -K 4 -S 8 -t 0.4 -H 8 -Fcdb0e -i music.wav -M music
+	sndr -K 4 -S 8 -t 0.1 -H 2 -Fcdb0e -i laugh.wav -M laugh
 
 
 2. Classifying a new input
@@ -158,7 +158,7 @@ Filename flags:
 Flags that interpret the classification results:
 
     -p
-    Probability of choosing the same class as the previous frame's
+    Probability of choosing the same class as the previous frame's class
     (temporal persistence).  Default 0.999, typically greater than 0.9.
     Suppresses rapid changes between successive frames,
     such as those due to short pauses between words.
