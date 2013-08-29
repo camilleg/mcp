@@ -154,13 +154,15 @@ public:
 		intp( &f(0), f.m, f.n);
 		f.k = f.m; f.m = f.n; f.n = f.k; f.k = 1;
 
+#if 0
 		// Dump to debugging file
 		{
-			ofstream df( "foo.dat", ios::out);
-			df.write( ( char*)&f.m, sizeof( int));
-			df.write( ( char*)&f.n, sizeof( int));
-			df.write( ( char*)f.v, sizeof( T)*f.m*f.n);
+			ofstream f( "/tmp/sndr-debugging-dump.dat", ios::out);
+			f.write( ( char*)&f.m, sizeof( int));
+			f.write( ( char*)&f.n, sizeof( int));
+			f.write( ( char*)f.v, sizeof( T)*f.m*f.n);
 		}
+#endif
 	}
 };
 
