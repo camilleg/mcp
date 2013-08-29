@@ -18,7 +18,6 @@
 template <class T>
 class gmm_t {
 public:
-
 	int K; // Gaussians
 	T dg;  // Diagonal load
 	array<T> ldt, c, m, is;
@@ -38,12 +37,13 @@ public:
 	void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
 	{
 		// Remember sizes
-		const int M = x.n, N = x.m;
+		const int M = x.n;
+		const int N = x.m;
 
-		// Check the input
-		for( int i = 0 ; i < M*N ; i++)
+		// Check input
+		for( int i = 0 ; i < M*N ; ++i)
 			if( isinf( x(i)) | isnan( x(i)))
-				throw std::runtime_error( "gmm_t::train(): Found NaN/Inf in input");
+				throw std::runtime_error( "gmm_t::train() got infinity or NaN.");
 
 		// Setup arrays
 		ldt.resize( K);
@@ -62,7 +62,7 @@ public:
 
 		// Sort out the learning situation
 		array<int> learn( K);
-		if( G.K & prior){ // ;;;; should be && ?  "prior" is bool, not a flag.
+		if( G.K != 0 && prior){
 			for( int k = 0 ; k < K ; ++k)
 				learn(k) = k >= G.K;
 		}else
@@ -198,7 +198,7 @@ public:
 			int nK = K;
 			for( int k = 0 ; k < K ; k++)
 				if( isinf( ldt(k)) | isnan( ldt(k)) )
-					nK--;
+					--nK;
 			if( nK != K){
 				std::cout << "GMM Iteration " << it << ", " << K-nK << " blown states" << std::endl;
 				array<T> m2( m), is2( is), c2( c), ldt2( ldt);
@@ -279,6 +279,8 @@ public:
 		
 		// number of gaussians
 		f.read( (char*)&K, sizeof( int));
+		if( K <= 0)
+			throw std::runtime_error( "gmm_t::load(): nonpositive number of gaussians.");
 
 		// dimension
 		int M;
