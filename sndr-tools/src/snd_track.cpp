@@ -6,7 +6,6 @@
 #include "aufeat.h"
 #include "gmm.h"
 #include "hmm.h"
-#include "aquat.h"
 #include "optparse.h"
 
 #include "wavfile.h"
@@ -81,8 +80,6 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 				}
 			}
 			cout << "Volume trimmed from " << f2.n << " frames to " << f.n << " frames" << endl;
-//			aq_window(2); aq_image( &f(0), f.m, f.n); aq_close();
-//			aq_window(3); aq_image( &f2(0), f2.m, f2.n); aq_close();
 		}
 	}
 
@@ -103,8 +100,6 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 						f(i,j) += f2(i,j+k);
 				f(i,j) /= av;
 			}
-//			aq_window(2); aq_image( &f(0), f.m, f.n); aq_close();
-//			aq_window(3); aq_image( &f2(0), f2.m, f2.n); aq_close();
 	}
 
 	// Transpose in place to make the cache happy during training
@@ -357,16 +352,11 @@ int main( int argc, const char **argv)
 #endif
 	}
 
-	// Show me the computation time
+	// Show computation time
 	gettimeofday( &time, NULL);
-	double end_time = time.tv_sec + double( time.tv_usec)/1000000.;
+	const double end_time = time.tv_sec + double( time.tv_usec)/1000000;
 	cout << "Features/Learning/Searching done in " << end_time - start_time << " sec" << endl;
-	cout << "Processing performance was " << (double( sfi.frames)/sfi.samplerate) / (end_time - start_time) << " times real-time" << endl;
-
-	// Show me the results
-//	aq_window(); 
-	aq_plotp( &o(0), o.size());
-//	aq_close();
+	cout << "Processing was " << (double( sfi.frames)/sfi.samplerate) / (end_time - start_time) << "x real time" << endl;
 
 	// Make an EDL list
 	if( O.edl.size()){

@@ -15,10 +15,6 @@ LDFLAGS = -lfftw3
 # Use float precision (not recommended)
 # CXXFLAGS += -D__FLOAT
 
-# Use AquaTerm to do some plots (Mac only)
-# CXXFLAGS += -DAQUA
-# LDFLAGS += -laquaterm
-
 # Make HMM speaker models
 #CXXFLAGS += -D__HMM_TRAIN
 
@@ -33,10 +29,10 @@ all: $(BIN)/snd_track $(BIN)/sndr
 $(BIN):
 	mkdir $(BIN)
 
-$(BIN)/snd_track: $(SRC)/snd_track.cpp $(SRC)/../../aufeat.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/aquat.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h Makefile
+$(BIN)/snd_track: $(SRC)/snd_track.cpp $(SRC)/../../aufeat.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h Makefile
 	$(CXX) $(SRC)/snd_track.cpp $(CXXFLAGS) $(LDFLAGS) -o $(BIN)/snd_track
 
-$(BIN)/sndr: $(SRC)/sndr.cpp $(SRC)/sndr.h $(SRC)/../../aufeat.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/aquat.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h Makefile
+$(BIN)/sndr: $(SRC)/sndr.cpp $(SRC)/sndr.h $(SRC)/../../aufeat.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h Makefile
 	$(CXX) $(SRC)/sndr.cpp $(CXXFLAGS) $(LDFLAGS) -o $(BIN)/sndr
 
 clean:

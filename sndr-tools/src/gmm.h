@@ -13,7 +13,6 @@
 #include "pmmintrin.h"
 
 #include "array.h"
-#include "aquat.h"
 
 // Gaussian mixture model class
 template <class T>
@@ -21,31 +20,27 @@ class gmm_t {
 public:
 
 	int K; // Gaussians
-	T dg; // Diagonal load
+	T dg;  // Diagonal load
 	array<T> ldt, c, m, is;
 
-	// Default values
+	// Constructor with default values
 	gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
 
 	// log sum
 	inline T lsum( T x, T y)
 	{
-		using namespace std;
-		if( x == y)
-			return x+log(2.);
-		return max( x, y) + log1p( exp( -fabs( x-y)));
+		return x == y ?
+			x+log(2.) :
+			std::max( x, y) + log1p( exp( -fabs( x-y)));
 	}
 
 	// Learn data
-	void train( const array<T> &x, int iters = 100, 
-						  const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
+	void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
 	{
-		using namespace std;
+		// Remember sizes
+		const int M = x.n, N = x.m;
 
-		// Remember the sizes
-		int M = x.n, N = x.m;
-
-		// Do a check on the input
+		// Check the input
 		for( int i = 0 ; i < M*N ; i++)
 			if( isinf( x(i)) | isnan( x(i)))
 				throw std::runtime_error( "gmm_t::train(): Found NaN/Inf in input");
@@ -58,8 +53,8 @@ public:
 		array<T> p( N, K);
 		array<T> lk( iters);
 
-		// Randomize
 #ifndef __NO_RAND_SEED
+		// Randomize
 		time_t tm; time( &tm);
 		srand( tm);
 		(void)rand();
@@ -67,11 +62,11 @@ public:
 
 		// Sort out the learning situation
 		array<int> learn( K);
-		if( G.K & prior){
-			for( int k = 0 ; k < K ; k++)
+		if( G.K & prior){ // ;;;; should be && ?  "prior" is bool, not a flag.
+			for( int k = 0 ; k < K ; ++k)
 				learn(k) = k >= G.K;
 		}else
-			for( int k = 0 ; k < K ; k++)
+			for( int k = 0 ; k < K ; ++k)
 				learn(k) = 1;
 
 		// Initial values
@@ -139,7 +134,7 @@ public:
 			for( int j = 0 ; j < N ; j++){
 				T mx = p(j);
 				for( int i = 1 ; i < K ; i++)
-					mx = max( mx, p(j,i));
+					mx = std::max( mx, p(j,i));
 				for( int i = 0 ; i < K ; i++)
 					p(j,i) -= mx;
 				lk(it) += mx;
@@ -153,14 +148,7 @@ public:
 				lk(it) += t;
 			}
 			if( !(it%25) || it == iters-1){
-				cout << "Iteration: " << it+1 << " Likelihood: " << lk(it) << endl;
-				if( it == 0)
-					aq_window( rand(), "GMM Training Likelihood");
-				aq_plot( &lk(1), it-1);
-				char ts[64]; sprintf( ts, "Iteration: %d, Likelihood: %.2f", it+1, lk(it));
-				aq_text( ts, .5, 1./15);
-				if( it == iters-1)
-					aq_close();
+			  std::cout << "GMM Iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 			}
 
 			// Get out of log domain
@@ -212,7 +200,7 @@ public:
 				if( isinf( ldt(k)) | isnan( ldt(k)) )
 					nK--;
 			if( nK != K){
-				cout << "Iteration " << it << ", " << K-nK << " blown states" << endl;
+				std::cout << "GMM Iteration " << it << ", " << K-nK << " blown states" << std::endl;
 				array<T> m2( m), is2( is), c2( c), ldt2( ldt);
 				array<int> learn2( learn);
 				m.resize( M, nK);
@@ -241,7 +229,6 @@ public:
 	// Evaluate likelihoods on data
 	void likelihoods( const array<T> &x, array<T> &p)
 	{
-		using namespace std;
 		// Check sizes and allocate output
 		int M = x.n, N = x.m;
 		if( M != m.m)
@@ -260,68 +247,52 @@ public:
 					p(j) = lsum( p(j), gc - 0.5*qt);
 				}
 			}
-/*
-		// Show me
-		aq_window();
-		aq_plot( &p(0), N);
-		char ts[64];
-		T mn = 0, mi = p(0), ma = p(0);
-		for( int i = 0 ; i < N ; i++){
-			mi = min( mi, p(i));
-			ma = max( ma, p(i));
-			mn += p(i);
-		}
-		mn /= N;
-		sprintf( ts, "Min/Max/Mean: %.2f/%.2f/%.2f", mi, ma, mn);
-		cout << ts << endl;
-		aq_text( ts, .5, 1./15);
-		aq_close();*/
 	}
 
 	// Save the data
-	void save( std::string fn)
+	void save( const std::string& filename)
 	{
 		using namespace std;
-		ofstream f( fn.c_str(), ios::out | ios::binary);
+		ofstream f( filename.c_str(), ios::out | ios::binary);
 		
-		// Write the number of gaussians
+		// number of gaussians
 		f.write( (char*)&K, sizeof( int));
 
-		// Write dimension
+		// dimension
 		f.write( (char*)&m.m, sizeof( int));
 
-		// Write priors
+		// priors
 		f.write( (char*)&c(0), K*sizeof( T));
 
-		// Write means
+		// means
 		f.write( (char*)&m(0), m.m*K*sizeof( T));
 
-		// Write inverse variances
+		// inverse variances
 		f.write( (char*)&is(0), is.m*K*sizeof( T));
 	}
 
 	// Load the data
-	void load( std::string fn)
+	void load( const std::string& filename)
 	{
 		using namespace std;
-		ifstream f( fn.c_str(), ios::in | ios::binary);
+		ifstream f( filename.c_str(), ios::in | ios::binary);
 		
-		// Read the number of gaussians
+		// number of gaussians
 		f.read( (char*)&K, sizeof( int));
 
-		// Read dimension
+		// dimension
 		int M;
 		f.read( (char*)&M, sizeof( int));
 
-		// Read priors
+		// priors
 		c.resize( K);
 		f.read( (char*)&c(0), K*sizeof( T));
 
-		// Read means
+		// means
 		m.resize( M, K);
 		f.read( (char*)&m(0), M*K*sizeof( T));
 
-		// Read inverse variances
+		// inverse variances
 		is.resize( M, K);
 		f.read( (char*)&is(0), M*K*sizeof( T));
 

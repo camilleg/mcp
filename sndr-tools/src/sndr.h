@@ -9,17 +9,12 @@
 #include "aufeat.h"
 #include "gmm.h"
 #include "hmm.h"
-#include "aquat.h"
 #include "optparse.h"
 #include "wavfile.h"
 
 #include <list>
 #include <vector>
 #include <sys/time.h>
-
-//
-// Audio feature extractor class
-//
 
 template <class T>
 class AudioFeatureExtractor_t{
@@ -132,8 +127,6 @@ public:
 					}
 				}
 				std::cout << "Volume trimmed from " << f2.n << " frames to " << f.n << " frames" << std::endl;
-//				aq_window( rand(), "Original Features"); aq_image( &f(0), f.m, f.n); aq_close();
-//				aq_window( rand(), "Trimmed Features"); aq_image( &f2(0), f2.m, f2.n); aq_close();
 			}
 		}
 		
@@ -154,8 +147,6 @@ public:
 							f(i,j) += f2(i,j+k);
 					f(i,j) /= av;
 				}
-//				aq_window(2); aq_image( &f(0), f.m, f.n); aq_close();
-//				aq_window(3); aq_image( &f2(0), f2.m, f2.n); aq_close();
 		}
 		
 		// Transpose in place to make the cache happy during training
@@ -172,11 +163,7 @@ public:
 	}
 };
 
-
-//
-// Audio feature container class
-//
-
+// Audio feature container
 template <class T>
 class AudioFeatures_t{
 public:
@@ -185,10 +172,10 @@ public:
 	std::list<array<T> > D; // Feature data
 	std::list<array<int> > S; // Silent frame data
 
-	// Initialize by providing the feature extractor
+	// Initialize from a feature extractor
 	AudioFeatures_t( AudioFeatureExtractor_t<T> &_F) : F(_F) {}
 
-	// Append an additional sound in the learning dictionary
+	// Append sound to learning dictionary
 	void operator()( const array<T> &in, T sr, bool thrm = false)
 	{
 		D.push_back( array<T>());
@@ -208,9 +195,9 @@ public:
 //		if( fs == 0)
 //			throw std::runtime_error( "AudioFeatures_t<T>::consolidate(): Can't consolidate data, list is empty");
 
-		// Consolidate all features
+		// Consolidate features
 		int ck = 0;
-		int del = F.fopts.find( 'd') != std::string::npos;
+		const int del = F.fopts.find( 'd') != std::string::npos;
 		C.resize( fs-del*5*D.size(), D.front().n);
 		while( D.size()){
 			for( unsigned int k = del*5 ; k < D.front().m ; ++k, ++ck)
@@ -219,7 +206,7 @@ public:
 			D.pop_front();
 			S.pop_front();
 		}
-		std::cout << "Overall feature size " << C.m << 'x' << C.n << std::endl;
+		std::cout << "Overall feature size " << C.m << " x " << C.n << std::endl;
 	}
 
 	// Clear buffers
@@ -234,10 +221,7 @@ public:
 };
 
 
-//
 // Single class model
-//
-
 template <class T>
 class AudioModel_t{
 public:
@@ -274,9 +258,8 @@ public:
 	void operator()( AudioFeatures_t<T> &A, int it, gmm_t<T> Gb)
 #endif
 	{
-		// Check that data is kosher
-		//		if( A.F != F)
-		//			throw std::runtime_error( "Feature space doesn't match");
+		//if( A.F != F)
+		//	throw std::runtime_error( "Feature space doesn't match");
 		
 		// Consolidate features
 		A.consolidate();
@@ -363,10 +346,7 @@ public:
 	}
 };
 
-//
 // Multiple class combiner
-//
-
 template <class T>
 class AudioClassifier_t{
 public:
@@ -429,7 +409,7 @@ public:
 				M = G.m.m;
 				H.S = Al.size();
 				H.K = G.K;
-				std::cout << "Making a " << H.S << " state hmm, " << H.K << " gaussians per state" << std::endl;
+				std::cout << "Making a " << H.S << "-state hmm with " << H.K << " gaussians per state." << std::endl;
 				H.lPi.resize( H.S);
 				H.lA.resize( H.S, H.S);
 				H.c.resize( H.K, H.S);
@@ -484,7 +464,7 @@ public:
 		for( int i = 0 ; i < H.S ; i++){
 			T ls = log( 0.);
 			for( int j = 0 ; j < H.S ; j++)
-				ls = max( ls, H.lA(i,j)) + log1p( exp( -fabs( ls-H.lA(i,j))));
+				ls = std::max( ls, H.lA(i,j)) + log1p( exp( -fabs( ls-H.lA(i,j))));
 			for( int j = 0 ; j < H.S ; j++)
 				H.lA(i,j) -= ls;
 		}
@@ -532,9 +512,6 @@ public:
 			}
 		}
 
-		// Show the results
-		aq_window( rand(), "Class outputs"); aq_plotp( &o(0), o.size()); aq_close();
-		
 		// Show the rates
 		array<int> hs( H.S);
 		for( int j = 0 ; j != H.S ; ++j)

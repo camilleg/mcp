@@ -11,12 +11,8 @@
 #include <iostream>
 
 #include "array.h"
-#include "aquat.h"
 
-
-//
 // Hidden Markov Model class
-//
 
 template <class T>
 class hmm_t {
@@ -34,10 +30,10 @@ public:
 	inline T lsum( T x, T y)
 	{
 		if( fabs( x-y) > 30)
-			return max( x, y);
+			return std::max( x, y);
 		if( x == y)
 			return x+log(2.);
-		return max( x, y) + log1p( exp( -fabs( x-y)));
+		return std::max( x, y) + log1p( exp( -fabs( x-y)));
 	}
 
 	// Learn data
@@ -116,12 +112,10 @@ public:
 		txi.resize( S, S);
 		array<T> lk( iters);
 
-		// Start iterating
+		// Iterate expectation-maximization
 		for( int it = 0; it < iters; ++it){
 		
-			//
-			// Expectation step
-			//
+			// *** Expectation step ***
 
 			// Get likelihoods from each gaussian from each state
 			for( int s = 0 ; s < S ; s++){
@@ -199,22 +193,14 @@ public:
 			for( int i = 0 ; i < S ; i++)
 				lk(it) = lsum( lk(it), la(i,N-1));
 			if( 1){ //( !((it+1)%25) | it == iters-1){
-				std::cout << "Iteration: " << it+1 << " Likelihood: " << lk(it) << std::endl;
-				if( it == 0)
-					aq_window( rand(), "HMM Training Likelihood");
-				aq_plot( &lk(0), it);
-				char ts[64]; sprintf( ts, "Iteration: %d, Likelihood: %.2f", it, lk(it));
-				aq_text( ts, 0.5, 1./15);
+				std::cout << "HMM Iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 			}
 
 			// Get out of log domain
 			for( int i = 0 ; i < N*K*S ; i++)
 				g(i) = exp( g(i));
 
-
-			//
-			// Maximization step
-			//
+			// *** Maximization step ***
 
 			// Initial probabilities
 			for( int s = 0 ; s < S ; s++){
@@ -284,7 +270,7 @@ public:
 		}
 	}
 
-	// Classify based on an known HMM
+	// Classify using a known HMM
 	void classify( const array<T> &x, array<int> &q, array<T> &bias = array<T>(), int ist = -1)
 	{
 		const int M = x.n, N = x.m;
@@ -315,15 +301,12 @@ public:
 					lB(i,j) += bias(i);
 		}
 
-		// Show likelihoods
-		//aq_window( rand(), "HMM State Posteriors"); aq_mplot( &lB(0), lB.m, lB.n);
-
 		// Run viterbi
 		viterbi( lB, q, ist);
 	}
 
 	// Viterbi decoding
-	void viterbi( const array<T> &lB, array<int> &q, int ist = -1)
+	void viterbi( const array<T> &lB, array<int> &q, const int ist = -1)
 	{
 		const int N = lB.n;
 
@@ -390,7 +373,8 @@ public:
 	// Short-time Viterbi decoding
 	void stviterbi( const array<T> &lB, array<int> &q)
 	{
-		const int M = lB.m, N = lB.n;
+		const int M = lB.m;
+		const int N = lB.n;
 
 		// Allocate output
 		q.resize( N);
@@ -400,8 +384,8 @@ public:
 		for( int i = 0 ; i < S ; i++)
 			pp(i) = lPi(i);
 
-		int a = 0, b = 1;
-		while( b < N){
+		int a = 0;
+		for( int b=1; b<N; ){
 
 			// Get state paths for a short segment
 			array<int> s;
@@ -430,13 +414,13 @@ public:
 				b = a+1;
 			}else{
 				// Increase window and repeat
-				b++;
+				++b;
 			}
 		}
 	}
 
 	// Interim Viterbi decoding
-	void iviterbi( const array<T> &lB, int a, int b, array<T> &lP, array<int> &q)
+	void iviterbi( const array<T> &lB, const int a, const int b, array<T> &lP, array<int> &q)
 	{
 		const int N = b-a;
 
@@ -486,7 +470,7 @@ public:
 		}
 	}
 
-	// Save the model
+	// Save model
 	bool save( const std::string& filename)
 	{
 		using namespace std;
@@ -511,7 +495,7 @@ public:
 		// log transition matrix
 		f.write( (char*)&lA(0), S*S*sizeof( T));
 
-		// the number of gaussians
+		// number of gaussians
 		f.write( (char*)&K, sizeof( int));
 
 		// dimension
@@ -536,7 +520,7 @@ public:
 		return true;
 	}
 
-	// Load a model
+	// Load model
 	bool load( const std::string& filename)
 	{
 		using namespace std;
@@ -568,7 +552,7 @@ public:
 		lA.resize( S, S);
 		f.read( (char*)&lA(0), S*S*sizeof( T));
 
-		// the number of gaussians
+		// number of gaussians
 		f.read( (char*)&K, sizeof( int));
 		if (K <= 0) {
 		  cout << "Problem loading HMM file '" << filename << "'.\n";
@@ -613,10 +597,10 @@ public:
 
 		// Compute the determinants.
 		ldt.resize( K, S);
-		for( int s = 0 ; s < S ; s++)
-			for( int k = 0 ; k < K ; k++){
+		for( int s = 0 ; s < S ; ++s)
+			for( int k = 0 ; k < K ; ++k){
 				ldt(k,s) = 0;
-				for( int i = 0 ; i < M ; i++)
+				for( int i = 0 ; i < M ; ++i)
 					ldt(k,s) += log( is(i,k,s));
 			}
 		return true;

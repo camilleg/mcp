@@ -4,8 +4,6 @@
 
 #include "sndr.h"
 
-using namespace std;
-
 // Timer
 
 // Start counting
@@ -22,7 +20,7 @@ double toc()
 {
 	struct timeval time;
 	gettimeofday( &time, NULL);
-	double end_time = time.tv_sec + double( time.tv_usec)/1000000.0;
+	const double end_time = time.tv_sec + double( time.tv_usec)/1000000.0;
 	return end_time - _tic_start_time;
 }
 
@@ -35,44 +33,42 @@ int main( int argc, const char **argv)
 	// Get options
 
 	// Model
-	int K = getoption<int>( "-K", argc, argv, 8, "Number of Gaussians"); // Number of Gaussians per GMM
-	int it = getoption<int>( "-e", argc, argv, 50, "Number of learning iterations"); // Number of learning iterations
-	real_t trans = getoption<real_t>( "-p", argc, argv, -40, "Transition likelihood"); // Transition likelihood (log lik for other states if negative, lik for diagonal if positive)
-	array<real_t> r = mgetoption<real_t>( "-r", argc, argv, "State transition bias"); // State transition bias
-	array<real_t> bias = mgetoption<real_t>( "-B", argc, argv, "Likelihood bias"); // Likelihood bias
-	int mf = getoption<int>( "-f", argc, argv, 0, "Length of state output filter"); // Length of state output filter
-	real_t mw = getoption<real_t>( "-w", argc, argv, 1, "Bias of state output filter"); // Bias of state output filter
+	const int K = getoption<int>( "-K", argc, argv, 8, "Number of Gaussians"); // per GMM
+	const int it = getoption<int>( "-e", argc, argv, 50, "Number of learning iterations");
+	const real_t trans = getoption<real_t>( "-p", argc, argv, -40, "Transition likelihood"); // log lik for other states if negative, lik for diagonal if positive
+	const array<real_t> r = mgetoption<real_t>( "-r", argc, argv, "State transition bias");
+	const array<real_t> bias = mgetoption<real_t>( "-B", argc, argv, "Likelihood bias");
+	const int mf = getoption<int>( "-f", argc, argv, 0, "Length of state output filter");
+	const real_t mw = getoption<real_t>( "-w", argc, argv, 1, "Bias of state output filter");
 
 	// Analysis
-	A.fopts = getoption<string>( "-F", argc, argv, string( "cdm"), "Feature options"); // Feature options string
+	A.fopts = getoption<std::string>( "-F", argc, argv, "cdm", "Feature options");
 	A.b = getoption<int>( "-n", argc, argv, 13, "Feature coefficients"); // Number of coeffs to use
-	A.flo = getoption<real_t>( "-l", argc, argv, 80, "Lowest frequency"); // Lowest frequency
-	A.fhi = getoption<real_t>( "-h", argc, argv, 7500, "Highest frequency"); // Highest frequency
-	A.fb = getoption<int>( "-b", argc, argv, 32, "Filterbank filters"); // Filterbank filters
+	A.flo = getoption<real_t>( "-l", argc, argv, 80, "Lowest frequency");
+	A.fhi = getoption<real_t>( "-h", argc, argv, 7500, "Highest frequency");
+	A.fb = getoption<int>( "-b", argc, argv, 32, "Filterbank filters");
 
 	// Time and amplitude scale
-	A.thr = getoption<real_t>( "-T", argc, argv, 0, "Peak threshold"); // Peak threshhold
-	A.tsz = getoption<real_t>( "-t", argc, argv, 0.1, "Window size"); // window size in seconds
-	A.hp = getoption<int>( "-H", argc, argv, 1, "Hop size"); // Hop size (window size/hp)
-	A.av = getoption<int>( "-a", argc, argv, 1, "Feature averaging"); // Feature averaging
+	A.thr = getoption<real_t>( "-T", argc, argv, 0, "Peak threshold");
+	A.tsz = getoption<real_t>( "-t", argc, argv, 0.1, "Window size"); // in seconds
+	A.hp = getoption<int>( "-H", argc, argv, 1, "Hop size"); // window size/hp
+	A.av = getoption<int>( "-a", argc, argv, 1, "Feature averaging");
 
 	// Filenames
-	string modout = getoption<string>( "-M", argc, argv, "", "Output model filename"); // Output model filename
-	string dump = getoption<string>( "-d", argc, argv, "", "Dump file prefix"); // Dump file prefix
-	array<string> infile = mgetoption<string>( "-i", argc, argv, "Input soundfile(s)"); // Input soundfile(s)
-	array<string> modin = mgetoption<string>( "-m", argc, argv, "Input model(s)"); // Input model filenames
-	string edl = getoption<string>( "-D", argc, argv, "", "EDL file name prefix"); // EDL file name prefix
-	array<string> trg = mgetoption<string>( "-g", argc, argv, "Target file"); // Target source files (enables sound tracking)
+	std::string modout = getoption<std::string>( "-M", argc, argv, "", "Output model filename");
+	const std::string dump = getoption<std::string>( "-d", argc, argv, "", "Dump file prefix");
+	const array<std::string> infile = mgetoption<std::string>( "-i", argc, argv, "Input soundfile(s)");
+	const array<std::string> modin = mgetoption<std::string>( "-m", argc, argv, "Input model(s)");
+	const std::string edl = getoption<std::string>( "-D", argc, argv, "", "EDL filename prefix");
+	const array<std::string> trg = mgetoption<std::string>( "-g", argc, argv, "Target file"); // Target source files (enables sound tracking)
 
 	tic();
 
-	// Decide what needs to be done
+	// Choose whether to train, classify, or track.
 	if( !modin.empty()){
 
-		// Classify an input sound given pre-trained models
-
-		cout << argv[0] << ": classifying..." << endl;
-
+		// Classify an input sound from pre-trained models
+		std::cout << argv[0] << ": classifying..." << std::endl;
 		AudioClassifier_t<real_t> C( A);
 
 		// Set some decoding parameters
@@ -84,23 +80,23 @@ int main( int argc, const char **argv)
 		// Load classifiers and combine them if necessary
 		if( modin.size() == 1) {
 			if (!C.load( modin(0))) {
-				cout << argv[0] << ": aborting." << endl;
+				std::cout << argv[0] << ": aborting." << std::endl;
 				return 1;
 			}
 		} else {
 			if (modout.empty()) {
 				modout = "model-default";
-				cout << argv[0] << ": output model filename defaulting to " << modout << "." << endl;
+				std::cout << argv[0] << ": output model filename defaulting to " << modout << "." << std::endl;
 			}
 			if (!C.combine_models( modin, modout)) {
-				cout << argv[0] << ": failed to combine models." << endl;
+				std::cout << argv[0] << ": failed to combine models." << std::endl;
 				return 1;
 			}
 		}
 
 		// Go through all files and perform classification
 		for( size_t i = 0 ; i < infile.size() ; ++i){
-			wavfile_t f( infile(i), ios::in);
+			wavfile_t f( infile(i), std::ios::in);
 			array<real_t> x( f.frames);
 			f.read_mono( x);
 			C( x, int( f.samplerate));
@@ -129,58 +125,58 @@ int main( int argc, const char **argv)
 
 	}else if( !trg.empty()){
 
-		// Learn to track a sound
-		cout << argv[0] << ": learning..." << endl;
+		// Track a sound
+		std::cout << argv[0] << ": learning..." << std::endl;
 		
-		// Add all the example sounds in the dictionary
+		// Add example sounds from the dictionary
 		AudioFeatures_t<real_t> F( A);
 		for( size_t i = 0 ; i < infile.size() ; ++i){
-			cout << "Learning from " << infile(i) << endl;
-			wavfile_t f( infile(i), ios::in);
+			std::cout << argv[0] << ": learning from " << infile(i) << std::endl;
+			wavfile_t f( infile(i), std::ios::in);
 			array<real_t> x( f.frames);
 			f.read_mono( x);
 			F( x, f.samplerate, true);
 		}
 		
-		// Learn a model and save it
+		// Learn and save model
 		AudioModel_t<real_t> M( A, K);
 		M( F, it);
 		M.save( modout + "-ubm");
 
-		// Add all the target sounds in the dictionary
+		// Add target sounds from dictionary
 		F.clear();
 		for( size_t i = 0 ; i < trg.size() ; ++i){
-			cout << "Learning from " << trg(i) << endl;
-			wavfile_t f( trg(i), ios::in);
+			std::cout << argv[0] << ": learning from " << trg(i) << std::endl;
+			wavfile_t f( trg(i), std::ios::in);
 			array<real_t> x( f.frames);
 			f.read_mono( x);
 			F( x, f.samplerate, true);
 		}
 
-		// Learn the target file based on the universal model
+		// Learn and save target file based on the universal model
 		AudioModel_t<real_t> Mt( A, K);
 		Mt( F, it, M.G);
 		Mt.save( modout + "-target");
 
 	}else{
-		// Learn a model from a bunch of example sounds
-		cout << argv[0] << ": learning..." << endl;
+		// Learn a model from example sounds
+		std::cout << argv[0] << ": learning..." << std::endl;
 
-		// Add all the example sounds in the dictionary
+		// Add example sounds from dictionary
 		AudioFeatures_t<real_t> F( A);
 		for( size_t i = 0 ; i < infile.size() ; ++i){
-			wavfile_t f( infile(i), ios::in);
+			wavfile_t f( infile(i), std::ios::in);
 			array<real_t> x( f.frames);
 			f.read_mono( x);
 			F( x, f.samplerate, true);
 		}
 
-		// Learn a model and save it
+		// Learn and save model
 		AudioModel_t<real_t> M( A, K);
 		M( F, it);
 		M.save( modout);
 	}
 
-	cout << "Done in " << toc() << " seconds." << endl;
+	std::cout << argv[0] << ": done in " << toc() << " seconds." << std::endl;
 	return 0;
 }
