@@ -6,11 +6,9 @@
 #define __OPTPARSE_H
 
 #include <iostream>
-#include <string>
 #include <stdexcept>
 #include <cstring>  // for strncmp() and strcmp()
 #include <cstdlib>
-#include <vector>
 #include <typeinfo> // for typeid() with gcc 4.4+
 
 template <class T> T    optassign             ( const char * )
@@ -22,23 +20,24 @@ template <> int         optassign<int        >( const char *o) { return atoi( o)
 template <> double      optassign<double     >( const char *o) { return atof( o);        }
 template <> std::string optassign<std::string>( const char *o) { return std::string( o); }
 
-// Get argv after "opt".
+// Get argv after "opt", either -x42 or -x 42.
 // If multiple opt's, use the last one.
 // Likely bug if the last one isn't followed by a value ("a.out -aFlag a -bFlag b -cFlag").
 template <class T>
 T getoption( const std::string& opt, int argc, const char **argv, T iv = T(), const char *descr = NULL)
 {
 	T v = iv;
-	for( int i = 0 ; i < argc ; ++i){
+	for( int i = 1 ; i < argc ; ++i){
 		// Find option flag
 		if( !strncmp( argv[i], opt.c_str(), opt.size())){
 			// Assign accordingly
 			v = optassign<T>( strcmp( argv[i], opt.c_str()) == 0 ? argv[++i] : argv[i]+opt.size());
 
 			if( descr)
-				std::cout << descr << " is " << v << "." << std::endl;
+				std::cout << argv[0] << ": " << descr << " is " << v << "." << std::endl;
 			else
-				std::cout << "Flag " << opt << " is " << v << "." << std::endl;
+				std::cout << argv[0] << ": flag " << opt << " is " << v << "." << std::endl;
+			// Don't break.  Keep looking for later flags.
 		}
 	}
 	return v;
@@ -50,8 +49,8 @@ T getoption( const std::string& opt, int argc, const char **argv, T iv = T(), co
 template <class T>
 array<T> mgetoption( const std::string& opt, int argc, const char **argv, const char *descr = NULL)
 {
-	array<T> v;
-	for( int i = 0 ; i < argc ; ++i){
+	array<T> v; // empty by default
+	for( int i = 1 ; i < argc ; ++i){
 		// Find option flag
 		if( !strncmp( argv[i], opt.c_str(), opt.size())){
 			// Assign accordingly
@@ -63,15 +62,13 @@ array<T> mgetoption( const std::string& opt, int argc, const char **argv, const 
 			}
 
 			if( descr)
-				std::cout << descr << " is ";
+				std::cout << argv[0] << ": " << descr << " is ";
 			else
-				std::cout << "Flag " << opt << " is ";
+				std::cout << argv[0] << ": flag " << opt << " is ";
 			for( size_t j = 0 ; j < v.size() ; ++j)
 				std::cout << v(j) << ((j < v.size()-1) ? ", " : ".\n");
 		}
 	}
-
-	// By default leave empty
 	return v;
 }
 
