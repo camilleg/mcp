@@ -8,14 +8,12 @@ bin=bin
 snd=../simpsons
 
 # Parameters
-#set pt = "-K 4 -H 4 -T .2 -t .5"
-#set pc = "-f 10 -w 2 -p .9999"
-set pt = "-K 8"
-set pc = "-p .9999"
+set train    = "-t .25 -H 8 -T .1 -l 60 -K 20 -e 500"
+set classify = "-p .9999 -f 2"
 
 echo "Learn model."
-$bin/sndr $pt -i $snd/simp.wav -g $snd/homer.wav -M models/homer
+$bin/sndr $train -i $snd/simp.wav -g $snd/homer.wav -M models/homer
 
 echo
 echo "Find Homer and not-Homer (into simp.wav.homer.?.wav)."
-$bin/sndr $pc -i $snd/simp.wav -m models/homer-target models/homer-ubm -M models/homer-combined -d homer
+$bin/sndr $train $classify -i $snd/simp.wav -m models/homer-target models/homer-ubm -M models/homer-combined -d homer -D homer
