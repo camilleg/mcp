@@ -157,10 +157,10 @@ public:
 #if 0
 		// Dump to debugging file
 		{
-			ofstream f( "/tmp/sndr-debugging-dump.dat", ios::out);
-			f.write( ( char*)&f.m, sizeof( int));
-			f.write( ( char*)&f.n, sizeof( int));
-			f.write( ( char*)f.v, sizeof( T)*f.m*f.n);
+			ofstream df( "/tmp/sndr-debugging-dump.dat", ios::out);
+			df.write( ( char*)&f.m, sizeof( int));
+			df.write( ( char*)&f.n, sizeof( int));
+			df.write( ( char*)f.v, sizeof( T)*f.m*f.n);
 		}
 #endif
 	}
