@@ -1,8 +1,8 @@
-# compiler
+# Compiler
 CXX= g++
 #CXX = icpc
 
-# flags
+# Flags
 CXXFLAGS = -g -O0 -I.. -pedantic -Wall
 CXXFLAGS += -D__NO_RAND_SEED
 ifeq ($(CXX),icpc)
@@ -16,13 +16,13 @@ LDFLAGS = -lfftw3
 # CXXFLAGS += -D__FLOAT
 
 # Make HMM speaker models
-#CXXFLAGS += -D__HMM_TRAIN
+CXXFLAGS += -D__HMM_TRAIN
 
-# directories
+# Directories
 BIN = bin
 SRC = src
 
-# rules
+# Rules
 
 all: $(BIN)/snd_track $(BIN)/sndr
 

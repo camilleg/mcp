@@ -39,7 +39,7 @@ public:
 	// Learn data
 	void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
 	{
-		// Input dims are reversed
+		// Input dims of array are reversed
 		const int M = x.n, N = x.m;
 		std::cout << "input is " << M << 'x' << N << std::endl;
 
@@ -273,6 +273,7 @@ public:
 	// Classify using a known HMM
 	void classify( const array<T> &x, array<int> &q, array<T> &bias = array<T>(), int ist = -1)
 	{
+		// Input dims of array are reversed
 		const int M = x.n, N = x.m;
 
 		// Get state probabilities
@@ -524,6 +525,13 @@ public:
 	bool load( const std::string& filename)
 	{
 		using namespace std;
+#if 0
+		if (m.empty()) {
+		  cout << "Failed to load HMM file into empty array.\n";
+		  throw runtime_error( "load(): empty array");
+		  return false;
+		}
+#endif
 		if (filename.empty()) {
 		  cout << "Failed to load HMM file with empty filename.\n";
 		  throw runtime_error( "load(): empty filename");
@@ -563,7 +571,7 @@ public:
 		// dimension
 		const int M = m.size()/(K*S);
 		if (M <= 0) {
-		  cout << "Problem loading HMM file '" << filename << "'.\n";
+		  cout << "Problem loading HMM file '" << filename << ": dimension-scalars are " << m.size() << ", " << K << ", " << S << "'.\n";
 		  throw runtime_error( "load(): nonpositive number of dimensions");
 		  return false;
 		}
@@ -617,8 +625,8 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 	if( H.K != h2.K)
 		throw std::runtime_error( "combine(): HMM state K's are incompatible");
 
-	// Allocate parameters
-	const int M = h1.m.m;
+	// Allocate parameters.  Second .m is array h.m's first dimension.
+	const size_t M = h1.m.m;
 	if( M != h2.m.m)
 		throw std::runtime_error( "combine(): Input sizes are incompatible");
 	H.lPi.resize(         H.S);
@@ -633,7 +641,7 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 		for( int k = 0; k < h1.K; ++k){
 			H.c  (k,s) = h1.c  (k,s);
 			H.ldt(k,s) = h1.ldt(k,s);
-			for( int i = 0; i < M; ++i){
+			for( size_t i = 0; i < M; ++i){
 				H.m (i,k,s) = h1.m (i,k,s);
 				H.is(i,k,s) = h1.is(i,k,s);
 			}
@@ -642,14 +650,14 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 		for( int k = 0; k < h2.K; ++k){
 			H.c  (k,h1.S+s) = h2.c  (k,s);
 			H.ldt(k,h1.S+s) = h2.ldt(k,s);
-			for( int i = 0; i < M; ++i){
+			for( size_t i = 0; i < M; ++i){
 				H.m (i,k,h1.S+s) = h2.m (i,k,s);
 				H.is(i,k,h1.S+s) = h2.is(i,k,s);
 			}
 		}
 	
 	// Make transition matrix and initial probabilities
-	for( int i = 0; i < H.lA.size(); ++i)
+	for( size_t i = 0; i < H.lA.size(); ++i)
 		H.lA(i) = -HUGE_VAL;
 	for( int i = 0; i < h1.S; ++i){
 		H.lPi(i) = h1.lPi(i);
