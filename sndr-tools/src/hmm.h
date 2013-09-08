@@ -525,13 +525,6 @@ public:
 	bool load( const std::string& filename)
 	{
 		using namespace std;
-#if 0
-		if (m.empty()) {
-		  cout << "Failed to load HMM file into empty array.\n";
-		  throw runtime_error( "load(): empty array");
-		  return false;
-		}
-#endif
 		if (filename.empty()) {
 		  cout << "Failed to load HMM file with empty filename.\n";
 		  throw runtime_error( "load(): empty filename");
@@ -569,13 +562,13 @@ public:
 		}
 
 		// dimension
-		const int M = m.size()/(K*S);
+		int M;
+		f.read( (char*)&M, sizeof( int));
 		if (M <= 0) {
 		  cout << "Problem loading HMM file '" << filename << ": dimension-scalars are " << m.size() << ", " << K << ", " << S << "'.\n";
 		  throw runtime_error( "load(): nonpositive number of dimensions");
 		  return false;
 		}
-		f.read( (char*)&M, sizeof( int));
 
 		// priors
 		c.resize( K, S);
