@@ -489,19 +489,15 @@ public:
 	}
 
 	// Save model
-	bool save( const std::string& filename)
+	void save( const std::string& filename)
 	{
 		using namespace std;
 		if (filename.empty()) {
-		  cout << "Failed to save HMM file with empty filename.\n";
-		  throw runtime_error( "save(): empty filename");
-		  return false;
+		  throw runtime_error( "hmm_t::save(\"\") failed.");
 		}
 		ofstream f( filename.c_str(), ios::out | ios::binary);
 		if (!f) {
-		  cout << "Problem saving HMM file " << filename << ".\n";
-		  throw runtime_error( "save() failed");
-		  return false;
+		  throw runtime_error( "hmm_t::save('" + filename + "') failed.");
 		}
 
 		// number of states
@@ -530,12 +526,9 @@ public:
 		f.write( (char*)&is(0), M*K*S*sizeof( T));
 
 		if (!f) {
-		  cout << "Problem saving HMM file " << filename << ".\n";
-		  throw runtime_error( "save() failed");
-		  return false;
+		  throw runtime_error( "hmm_t::save('" + filename + "') failed.");
 		}
 		cout << "Saved HMM file " << filename << ".\n";
-		return true;
 	}
 
 	// Load model

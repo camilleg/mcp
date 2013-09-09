@@ -569,7 +569,7 @@ public:
 	}
 
 	// Load preexisting HMM model (potentially with feature info)
-	bool load( const std::string &modin)
+	void load( const std::string &modin)
 	{
 		// Load the HMM (throw exception on failure).
 		H.load( modin);
@@ -611,18 +611,16 @@ public:
 
 		// Ensure feature class initialization.
 		F.srate = 0;
-		return true;
 	}
 
 	// Combine multiple sound model files into an HMM model file (and pack in the feature info as well)
-	bool combine_models( const array<std::string> &modin, const std::string &modout)
+	void combine_models( const array<std::string> &modin, const std::string &modout)
 	{
 		// Load GMM models and combine them into one HMM
 		combine( modin);
 
-		// Save the HMM
-		if (!H.save( modout))
-		  return false;
+		// Save the HMM (throw exception on failure).
+		H.save( modout);
 
 		// Be sneaky and append the feature data on the hmm file
 		std::ofstream ff( modout.c_str(), std::ios::binary | std::ios::app);
@@ -641,7 +639,6 @@ public:
 //		ff.write( (char*)&F.bs, sizeof( int));
 //		ff.write( (char*)F.bias.v, F.bias.size()*sizeof( T));
 		ff.write( F.fopts.c_str(), F.fopts.size()*sizeof( char));
-		return true;
 	}
 };
 

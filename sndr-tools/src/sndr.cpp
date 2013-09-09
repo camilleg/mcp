@@ -78,19 +78,13 @@ int main( int argc, const char **argv)
 
 		// Load classifiers and combine them if necessary
 		if( modin.size() == 1) {
-			if (!C.load( modin(0))) {
-				std::cout << argv[0] << ": aborting." << std::endl;
-				return 1;
-			}
+			C.load( modin(0)); // may throw exception
 		} else {
 			if (modout.empty()) {
 				modout = "model-default";
 				std::cout << argv[0] << ": output model filename defaulting to " << modout << "." << std::endl;
 			}
-			if (!C.combine_models( modin, modout)) {
-				std::cout << argv[0] << ": failed to combine models." << std::endl;
-				return 1;
-			}
+			C.combine_models( modin, modout); // may throw exception
 		}
 
 		// Go through all files and perform classification
