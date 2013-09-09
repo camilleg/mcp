@@ -585,12 +585,6 @@ public:
 		if (!f) {
 		  throw runtime_error( "hmm_t::load('" + filename + "') failed.");
 		}
-		
-		// number of states
-		f.read( (char*)&S, sizeof( int));
-		if (S <= 0 || S > 1e9) {
-		  throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive or suspicious number of states, " + to_str(S) + ".");
-		}
 
 		// Compute the determinants.
 		ldt.resize( K, S);
