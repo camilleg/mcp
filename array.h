@@ -11,6 +11,12 @@
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
+#include <sstream> // for to_str()
+
+// C++-11 deprecates this with std::to_string().
+// Or we could use boost::lexical_cast<std::string>().
+// todo: use to_str in other throw()'s.
+template <typename T> std::string to_str(const T& t) { std::ostringstream os; os << t; return os.str(); }
 
 // Multidimensional array class.
 
@@ -158,7 +164,7 @@ public:
 				v = new T[size()];
 			}
 			catch( std::bad_alloc& ){
-				throw std::runtime_error( "array::resize(): error allocating memory");
+				throw std::runtime_error( "array::resize() failed to allocate " + to_str(m) + " x " + to_str(n) + " x " + to_str(k) + " elements\n" );
 			}
 		}
 	}
