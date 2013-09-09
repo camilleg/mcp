@@ -571,13 +571,10 @@ public:
 	// Load preexisting HMM model (potentially with feature info)
 	bool load( const std::string &modin)
 	{
-		// Load the HMM first
-		if (!H.load( modin)) {
-		  std::cout << "failed to load HMM '" << modin << "'." << std::endl;
-		  return false;
-		}
+		// Load the HMM (throw exception on failure).
+		H.load( modin);
 
-		// Load the extra feature parameter data (if any)
+		// Load any extra feature parameters.
 		char opt[32];
 		char *opp = opt;
 		std::ifstream ff( modin.c_str(), std::ios::binary);

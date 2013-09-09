@@ -539,27 +539,21 @@ public:
 	}
 
 	// Load model
-	bool load( const std::string& filename)
+	void load( const std::string& filename)
 	{
 		using namespace std;
 		if (filename.empty()) {
-		  cout << "Failed to load HMM file with empty filename.\n";
-		  throw runtime_error( "load(): empty filename");
-		  return false;
+		  throw runtime_error( "hmm_t::load(\"\") failed.");
 		}
 		ifstream f( filename.c_str(), ios::in | ios::binary);
 		if (!f) {
-		  cout << "Problem loading HMM file '" << filename << "'.\n";
-		  throw runtime_error( "load() failed");
-		  return false;
+		  throw runtime_error( "hmm_t::load('" + filename + "') failed.");
 		}
 		
 		// number of states
 		f.read( (char*)&S, sizeof( int));
 		if (S <= 0) {
-		  cout << "Problem loading HMM file '" << filename << "'.\n";
-		  throw runtime_error( "load(): nonpositive number of states");
-		  return false;
+		  throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of states, " + to_str(S) + ".");
 		}
 
 		// initial log probabilities
@@ -573,18 +567,14 @@ public:
 		// number of gaussians
 		f.read( (char*)&K, sizeof( int));
 		if (K <= 0) {
-		  cout << "Problem loading HMM file '" << filename << "'.\n";
-		  throw runtime_error( "load(): nonpositive number of gaussians");
-		  return false;
+		  throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of gaussians per state, " + to_str(K) + ".");
 		}
 
 		// dimension
 		int M;
 		f.read( (char*)&M, sizeof( int));
 		if (M <= 0) {
-		  cout << "Problem loading HMM file '" << filename << ": dimension-scalars are " << m.size() << ", " << K << ", " << S << "'.\n";
-		  throw runtime_error( "load(): nonpositive number of dimensions");
-		  return false;
+		  throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of dimensions, from scalars " + to_str(m.size()) + ", " + to_str(K) + ", " + to_str(S) + ".");
 		}
 
 		// priors
@@ -600,17 +590,13 @@ public:
 		f.read( (char*)&is(0), M*K*S*sizeof( T));
 
 		if (!f) {
-		  cout << "Problem loading HMM file '" << filename << "'.\n";
-		  throw runtime_error( "load() failed");
-		  return false;
+		  throw runtime_error( "hmm_t::load('" + filename + "') failed.");
 		}
 		
 		// number of states
 		f.read( (char*)&S, sizeof( int));
-		if (S <= 0) {
-		  cout << "Problem loading HMM file '" << filename << "'.\n";
-		  throw runtime_error( "load(): nonpositive number of states");
-		  return false;
+		if (S <= 0 || S > 1e9) {
+		  throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive or suspicious number of states, " + to_str(S) + ".");
 		}
 
 		// Compute the determinants.
@@ -621,7 +607,6 @@ public:
 				for( int i = 0 ; i < M ; ++i)
 					ldt(k,s) += log( is(i,k,s));
 			}
-		return true;
 	}
 
 };
