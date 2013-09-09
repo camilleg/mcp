@@ -378,7 +378,6 @@ public:
 			  std::cout << "AudioClassifier_t::combine() skipping empty filename." << std::endl;
 			  continue;
 			}
-			//std::cout << "AudioClassifier_t::combine() loaded model " << f(i) << std::endl;
 			Al.push_back( AudioModel_t<T>( F));
 			if (!Al.back().load( f(i))) {
 			  std::cout << "AudioClassifier_t::combine() failed to load model '" << f(i) << "'." << std::endl;
@@ -393,8 +392,11 @@ public:
 	void combine( std::list<AudioModel_t<T> > &Al)
 	{
 #ifdef __HMM_TRAIN
-		// Pack into a single HMM
-		::combine( H, (*Al.begin()).G, (*Al.end()).G, 1.-trans, 1.-trans);
+		// Pack into a single HMM.
+		if (Al.size() != 2)
+		  throw std::runtime_error("BUG: hmm_t::combine() ignores intermediate elements of list of HMMs.");
+		// todo: use all elements of list.
+		::combine( H, Al.front().G, Al.back().G, 1.-trans, 1.-trans);
 #else
 		// Pack all GMMs in a HMM
 		int M = -1;
@@ -412,7 +414,7 @@ public:
 				M = G.m.m;
 				H.S = Al.size();
 				H.K = G.K;
-				std::cout << "Making a " << H.S << "-state hmm with " << H.K << " gaussians per state." << std::endl;
+				std::cout << "Making a " << H.S << "-state HMM with " << H.K << " gaussians per state." << std::endl;
 				H.lPi.resize( H.S);
 				H.lA.resize( H.S, H.S);
 				H.c.resize( H.K, H.S);

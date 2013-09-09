@@ -562,6 +562,7 @@ public:
 		if (K <= 0) {
 		  throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of gaussians per state, " + to_str(K) + ".");
 		}
+		//std::cout << ( "DEBUG hmm_t::load('" + filename + "'): number of gaussians per state, K, is " + to_str(K) + ".\n");
 
 		// dimension
 		int M;
