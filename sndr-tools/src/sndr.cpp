@@ -97,20 +97,14 @@ int main( int argc, const char **argv)
 			// Make output files with each sound class
 			if( dump.size()){
 				for( int j = 0 ; j < C.H.S ; ++j){
-					// Less awkward than sprintf is std::to_string(j) with "g++ -std=c++0x",
-					// but other parts of this code aren't yet c++0x compliant.
-					char nm[512];
-					sprintf( nm, "%s.%s.%d.wav", infile(i).c_str(), dump.c_str(), j);
-					C.make_snd( x, nm, j);
+					C.make_snd( x, infile(i) + "." + dump + "." + to_str(j) + ".wav", j);
 				}
 			}
 
 			// Make EDL file
 			if( edl.size()){
 				for( int j = 0 ; j < C.H.S ; ++j){
-					char nm[512];
-					sprintf( nm, "%s.%s.%d.edl", infile(i).c_str(), edl.c_str(), j);
-					C.make_edl( nm, j);
+					C.make_edl( infile(i) + "." + edl + "." + to_str(j) + ".edl", j);
 				}
 			}
 
