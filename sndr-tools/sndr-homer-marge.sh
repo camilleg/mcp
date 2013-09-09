@@ -8,11 +8,10 @@ bin=bin
 snd=../simpsons
 
 # Parameters
-train="-t .25 -H 8 -T .4 -l 45 -h 4500 -K 7 -e 70"
+train="-t .25 -H 8 -T .4 -l 45 -h 4500 -K 7 -e 20"	# -e 70 is better but slower
 classify="-p .9999 -f 2"
 
 echo "Learn model for Marge."
-echo $bin/sndr $train -i $snd/simp.wav -g $snd/marge -M models/marge
 $bin/sndr $train -i $snd/simp.wav -g $snd/marge.wav -M models/marge
 echo
 echo "Find Marge and not-Marge (into simp.wav.marge.*.wav)."
