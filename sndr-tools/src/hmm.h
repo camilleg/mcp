@@ -91,7 +91,7 @@ public:
 				for( int j = 0; j < S; ++j)
 					lA(i,j) = log( T(rand())/RAND_MAX);
 			for( int i = 0; i < S; ++i){
-				T ls = lA(i,0);		// ;;;; bug?  why not log(0.0) ?
+				T ls = log(0.0);
 				for( int j = 0; j < S; ++j)
 					logadd( ls, lA(i,j));
 				for( int j = 0; j < S; ++j)
@@ -99,19 +99,19 @@ public:
 			}
 		}else{
 			
-			// Copy values for Gaussians
+			// Copy values of Gaussians
 			for( int s = 0; s < S; ++s){
 				for( int k = 0; k < K; ++k){
 					ldt(k,s) = H.ldt(k,s);
 					c(k,s) = H.c(k,s);
 					for( int i = 0; i < M; ++i){
-						m(i,k,s) = H.m(i,k,s);
+						m (i,k,s) = H.m (i,k,s);
 						is(i,k,s) = H.is(i,k,s);
 					}
 				}
 			}
 
-			// Copy values for initial and transition probabilities
+			// Copy values of initial and transition probabilities
 			for( int i = 0; i < S; ++i){
 				lPi(i) = H.lPi(i);
 				for( int j = 0; j < S; ++j)
@@ -284,7 +284,6 @@ public:
 					}
 				}
 			}
-
 		}
 	}
 
@@ -296,18 +295,18 @@ public:
 
 		// Get state probabilities
 		array<T> lB( S, N);
-		for( int i = 0 ; i < S*N ; i++)
-			lB(i) = -HUGE_VAL;
+		for( int i = 0 ; i < S*N ; ++i)
+			lB(i) = -log(0.0); // Init all lB(s,j)'s.
 
 #pragma omp parallel for
 		for( int s = 0 ; s < S ; s++)
 			for( int k = 0 ; k < K ; k++){
-				T gc = log( c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
+				const T gc = log( c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
 				for( int j = 0 ; j < N ; j++){
 					T qt = 0;
 					for( int i = 0 ; i < M ; i++)
 						qt += is(i,k,s) * (x(j,i) - m(i,k,s)) * (x(j,i) - m(i,k,s));
-					logadd( lB(s,j), gc - 0.5*qt);		// ;;;; bug: uninitialized?
+					logadd( lB(s,j), gc - 0.5*qt);
 				}
 			}
 
