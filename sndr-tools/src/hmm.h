@@ -296,7 +296,7 @@ public:
 		// Get state probabilities
 		array<T> lB( S, N);
 		for( int i = 0 ; i < S*N ; ++i)
-			lB(i) = -log(0.0); // Init all lB(s,j)'s.
+			lB(i) = log(0.0); // Init all lB(s,j)'s.
 
 #pragma omp parallel for
 		for( int s = 0 ; s < S ; s++)
@@ -598,19 +598,20 @@ public:
 
 };
 
-// Combine two HMMs in a loop
+// Combine two HMMs in a loop.
 template <class T>
 void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T p2 = 0.5)
 {
-	H.S = h1.S + h2.S;
+	if( h1.K != h2.K)
+		throw std::runtime_error( "combine(): incompatible HMM state K's " + to_str(h1.K) + " and " + to_str(h2.K) + ".");
 	H.K = h1.K;
-	if( H.K != h2.K)
-		throw std::runtime_error( "combine(): HMM state K's are incompatible");
+	H.S = h1.S + h2.S;
 
 	// Allocate parameters.  Second .m is array h.m's first dimension.
+	if( h1.m.m != h2.m.m)
+		throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(h1.m.m) + " and " + to_str(h2.m.m) + ".");
 	const size_t M = h1.m.m;
-	if( M != h2.m.m)
-		throw std::runtime_error( "combine(): Input sizes are incompatible");
+
 	H.lPi.resize(         H.S);
 	H.lA .resize(    H.S, H.S);
 	H.c  .resize(    H.K, H.S);
@@ -618,7 +619,7 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 	H.m  .resize( M, H.K, H.S);
 	H.is .resize( M, H.K, H.S);
 
-	// Copy data
+	// Copy data.
 	for( int s = 0; s < h1.S; ++s)
 		for( int k = 0; k < h1.K; ++k){
 			H.c  (k,s) = h1.c  (k,s);
@@ -637,8 +638,8 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 				H.is(i,k,h1.S+s) = h2.is(i,k,s);
 			}
 		}
-	
-	// Make transition matrix and initial probabilities
+
+	// Make transition matrix and initial probabilities.
 	for( size_t i = 0; i < H.lA.size(); ++i)
 		H.lA(i) = -HUGE_VAL;
 	for( int i = 0; i < h1.S; ++i){
@@ -654,7 +655,7 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 	H.lA(h1.S-1,      h1.S) = log( p1);
 	H.lA(h1.S+h2.S-1, 0)    = log( p2);
 
-	// Normalize them
+	// Normalize them.
 	T ps = 0;
 	for( int i = 0; i < H.S; ++i)
 		ps += exp( H.lPi(i));
@@ -662,9 +663,9 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 		H.lPi(i) = log( exp( H.lPi(i))/ps);
 
 	for( int i = 0; i < h1.S; ++i)
-		H.lA(h1.S-1,i) += log( (1.-p1));
+		H.lA(h1.S-1,i) += log( (1.-p1));		// why not log1p(-p1) ?
 	for( int i = 0; i < h2.S; ++i)
-		H.lA(h1.S+h2.S-1,h1.S+i) += log( (1.-p2));
+		H.lA(h1.S+h2.S-1,h1.S+i) += log( (1.-p2));	// why not log1p(-p2) ?
 }
 
 #endif
