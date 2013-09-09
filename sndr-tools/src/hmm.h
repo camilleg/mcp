@@ -26,14 +26,31 @@ public:
 	// Constructor
 	hmm_t( int s = 0, int k = 1) : S(s), K(k) {}
 
-	// log sum
-	inline T lsum( T x, T y)
+	// Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
+	inline void logadd( T& x, const T& y)
 	{
-		if( fabs( x-y) > 30)
-			return std::max( x, y);
-		if( x == y)
-			return x+log(2.);
-		return std::max( x, y) + log1p( exp( -fabs( x-y)));
+	  if (y == -INFINITY) {
+	    // x remains unchanged, trivially.
+	    return;
+	  }
+	  if (x == -INFINITY && isnan(y)) {
+	    // y might be -HUGE_VAL, from log(0.0).
+	    return;
+	  }
+
+	  if (isnan(x) || isnan(y))
+	    throw std::runtime_error( "hmm_t::logadd(" + to_str(x) + ", " + to_str(y) + ")");
+
+	  const T z = fabs(x-y);
+	  if (z > 30.0) {
+	    x = std::max(x, y);
+	    return;
+	  }
+	  if (x == y) {		// Is this special case worth testing for?
+	    x += log(2.0);
+	    return;
+	  }
+	  x = std::max(x, y) + log1p(exp(-z));
 	}
 
 	// Learn data
@@ -41,7 +58,7 @@ public:
 	{
 		// Input dims of array are reversed
 		const int M = x.n, N = x.m;
-		std::cout << "input is " << M << 'x' << N << std::endl;
+		std::cout << "HMM training " << M << " x " << N << std::endl;
 
 		// Setup state model parameters
 		ldt.resize( K, S);
@@ -74,11 +91,11 @@ public:
 				for( int j = 0; j < S; ++j)
 					lA(i,j) = log( T(rand())/RAND_MAX);
 			for( int i = 0; i < S; ++i){
-				T ls = lA(i,0);
+				T ls = lA(i,0);		// ;;;; bug?  why not log(0.0) ?
 				for( int j = 0; j < S; ++j)
-					ls = lsum( ls, lA(i,j));
+					logadd( ls, lA(i,j));
 				for( int j = 0; j < S; ++j)
-						lA(i,j) = lA(i,j) - ls;
+					lA(i,j) -= ls;
 			}
 		}else{
 			
@@ -135,7 +152,7 @@ public:
 				for( int j = 0 ; j < N ; j++){
 					T tp = log( 0.0);
 					for( int k = 0 ; k < K ; k++)
-						tp = lsum( tp, q(j,k,s));
+						logadd( tp, q(j,k,s));
 					lp(s,j) = tp;
 				}
 
@@ -146,7 +163,7 @@ public:
 				for( int j = 0 ; j < S ; j++){
 					T ls = log( 0.0);
 					for( int i = 0 ; i < S ; i++)
-						ls = lsum( ls, la(i,t) + lA(i,j));
+						logadd( ls, la(i,t) + lA(i,j));
 					la(j,t+1) = ls + lp(j,t+1);
 				}
 
@@ -158,7 +175,7 @@ public:
 				for( int i = 0 ; i < S ; i++){
 					T ls = log( 0.0);
 					for( int j = 0 ; j < S ; j++)
-						ls = lsum( ls, lb(j,t+1) + lA(i,j) + lp(j,t+1));
+						logadd( ls, lb(j,t+1) + lA(i,j) + lp(j,t+1));
 					lb(i,t) = ls;
 				}
 
@@ -170,17 +187,17 @@ public:
 				for( int i = 0 ; i < S ; i++)
 					for( int j = 0 ; j < S ; j++){
 						txi(i,j) = lA(i,j) + la(i,t) + lp(j,t+1) + lb(j,t+1);
-						ls = lsum( ls, txi(i,j));
+						logadd( ls, txi(i,j));
 					}
 				for( int i = 0 ; i < S*S ; i++)
-					xi(i) = lsum( xi(i), txi(i) - ls);
+					logadd( xi(i), txi(i) - ls);
 			}
 
 			// Get gamma
 			for( int j = 0 ; j < N ; j++){
 				T ls = log( 0.0);
 				for( int s = 0 ; s < S ; s++)
-					ls = lsum( ls, la(s,j)+lb(s,j));
+					logadd( ls, la(s,j)+lb(s,j));
 				for( int s = 0 ; s < S ; s++){
 					T tg = la(s,j) + lb(s,j) - lp(s,j) - ls;
 					for( int k = 0 ; k < K ; k++)
@@ -190,10 +207,11 @@ public:
 
 			// Get overall likelihood
 			lk(it) = log( 0.0);
-			for( int i = 0 ; i < S ; i++)
-				lk(it) = lsum( lk(it), la(i,N-1));
+			for( int i = 0 ; i < S ; i++) {
+				logadd( lk(it), la(i,N-1));
+			}
 			if( 1){ //( !((it+1)%25) | it == iters-1){
-				std::cout << "HMM Iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
+				std::cout << "HMM iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 			}
 
 			// Get out of log domain
@@ -206,7 +224,7 @@ public:
 			for( int s = 0 ; s < S ; s++){
 				T tp = log( 0.0);
 				for( int i = 0 ; i < K ; i++)
-					tp = lsum( tp, log( g(0,i,s)));
+					logadd( tp, log( g(0,i,s)));
 				lPi(s) = tp;
 			}
 
@@ -214,7 +232,7 @@ public:
 			for( int i = 0 ; i < S ; i++){
 				T ls = log( 0.0);
 				for( int j = 0 ; j < S ; j++)
-					ls = lsum( ls, xi(i,j));
+					logadd( ls, xi(i,j));
 				for( int j = 0 ; j < S ; j++)
 					lA(i,j) = xi(i,j) - ls;
 			}
@@ -289,7 +307,7 @@ public:
 					T qt = 0;
 					for( int i = 0 ; i < M ; i++)
 						qt += is(i,k,s) * (x(j,i) - m(i,k,s)) * (x(j,i) - m(i,k,s));
-					lB(s,j) = lsum( lB(s,j), gc - 0.5*qt);
+					logadd( lB(s,j), gc - 0.5*qt);		// ;;;; bug: uninitialized?
 				}
 			}
 
