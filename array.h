@@ -18,7 +18,7 @@
 // todo: use to_str in other throw()'s.
 template <typename T> std::string to_str(const T& t) { std::ostringstream os; os << t; return os.str(); }
 
-// Multidimensional array class.
+// Multidimensional array
 
 template <class T>
 class array{
@@ -240,7 +240,7 @@ public:
 	// i.e., forbid multiple representations with the same meaning (empty()).
 };
 
-// ostream interface to array<T>
+// ostream interface
 template <class T>
 std::ostream& operator<<( std::ostream& o, const array<T>& a)
 {

@@ -230,6 +230,7 @@ class AudioModel_t{
 public:
 
 #ifdef __HMM_TRAIN
+	hmm_t< gmm_t<T> > compiling_test;
 	hmm_t<T> G; // HMM model for the sound class
 #else
 	gmm_t<T> G; // GMM model for the sound class
@@ -396,7 +397,7 @@ public:
 		if (Al.size() != 2)
 		  throw std::runtime_error("BUG: hmm_t::combine() ignores intermediate elements of list of HMMs.");
 		// todo: use all elements of list.
-		::combine( H, Al.front().G, Al.back().G, 1.-trans, 1.-trans);
+		::combine( H, Al.front().G, Al.back().G, T(1.-trans), T(1.-trans));
 #else
 		// Pack all GMMs in a HMM
 		int M = -1;

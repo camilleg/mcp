@@ -3,6 +3,7 @@
 // author  : Paris Smaragdis
 
 #include "sndr.h"
+typedef double real_t; // if float not double, also #define __FLOAT before #include sndr.h
 
 // Timer
 
@@ -23,8 +24,6 @@ double toc()
 	const double end_time = time.tv_sec + double( time.tv_usec)/1000000.0;
 	return end_time - _tic_start_time;
 }
-
-typedef double real_t;
 
 int main( int argc, const char **argv)
 {
