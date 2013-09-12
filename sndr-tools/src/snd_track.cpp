@@ -130,9 +130,9 @@ int learn( const array<real_t> &in, const array<real_t> &s, int K, int it, array
 	
 	// Pack into a single HMM
 	if( t.size() == 1)
-		combine( H, H1, H2, 1.-t(0), 1.-t(0));
+		combine( H, H1, H2, real_t(1.-t(0)), real_t(1.-t(0)));
 	else
-		combine( H, H1, H2, 1.-t(0), 1.-t(1));
+		combine( H, H1, H2, real_t(1.-t(0)), real_t(1.-t(1)));
 	cout << "Packed models in an HMM" << endl;
 
 	// Define in and out state threshhold

@@ -3,13 +3,14 @@ CXX= g++
 #CXX = icpc
 
 # Flags
-CXXFLAGS = -g -O0 -I.. -pedantic -Wall -march=native
+CXXFLAGS = -O3 -I..
 CXXFLAGS += -D__NO_RAND_SEED
 ifeq ($(CXX),icpc)
-	CXXFLAGS += -xHOST -O3 -ip -no-prec-div -mdynamic-no-pic -openmp -openmp-report0 -vec-report0 -fno-alias
+	CXXFLAGS += -xHOST -ip -no-prec-div -mdynamic-no-pic -openmp -openmp-report0 -vec-report0 -fno-alias
 else
-	CXXFLAGS += -O3 -march=core2 -fopenmp
+	CXXFLAGS += -march=native -fopenmp -pedantic -Wall
 endif
+# CXXFLAGS += -g -O0
 LDFLAGS = -lfftw3
 
 # Use float precision (not recommended)

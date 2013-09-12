@@ -9,7 +9,9 @@
 #include <fstream>
 #include <algorithm>
 #include <iostream>
-//#include <x86intrin.h> // all SIMD intrinsics, not just SSE3
+
+#include <x86intrin.h> // All SIMD intrinsics, not just SSE3.
+// Has effect only with -march=native, -mfpmath, -msse, etc; AND -On for n>0.
 
 #include "array.h"
 
