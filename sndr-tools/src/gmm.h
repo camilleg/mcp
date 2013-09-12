@@ -9,8 +9,7 @@
 #include <fstream>
 #include <algorithm>
 #include <iostream>
-
-#include "pmmintrin.h"
+//#include <x86intrin.h> // all SIMD intrinsics, not just SSE3
 
 #include "array.h"
 
