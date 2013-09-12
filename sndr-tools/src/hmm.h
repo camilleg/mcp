@@ -21,11 +21,14 @@ public:
 	int K; // Gaussians per state
 	array<T> lPi, lA; // Model parameters
 	array<T> ldt, c, m, is; // Gaussian mixture data
+private:
 	array<T> la, lb, xi, txi; // Various parameters for Baum-Welch iterations
 
+public:
 	// Constructor
 	hmm_t( int s = 0, int k = 1) : S(s), K(k) {}
 
+private:
 	// Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
 	inline void logadd( T& x, const T& y)
 	{
@@ -53,6 +56,7 @@ public:
 	  x = std::max(x, y) + log1p(exp(-z));
 	}
 
+public:
 	// Learn data
 	void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
 	{
@@ -324,6 +328,7 @@ public:
 		viterbi( lB, q, ist);
 	}
 
+private:
 	// Viterbi decoding
 	void viterbi( const array<T> &lB, array<int> &q, const int ist = -1)
 	{
@@ -489,6 +494,7 @@ public:
 		}
 	}
 
+public:
 	// Save model
 	void save( const std::string& filename)
 	{

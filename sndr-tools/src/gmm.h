@@ -20,11 +20,14 @@ template <class T>
 class gmm_t {
 public:
 	int K; // Gaussians
+private:
 	T dg;  // Diagonal load
+public:
 	array<T> ldt, c, m, is;
 
 	// Constructor with default values
 	gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
+private:
 
 	// log sum
 	inline T lsum( T x, T y)
@@ -34,6 +37,7 @@ public:
 			std::max( x, y) + log1p( exp( -fabs( x-y)));
 	}
 
+public:
 	// Learn data
 	void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
 	{
@@ -227,6 +231,7 @@ public:
 
 	}
 
+private:
 	// Evaluate likelihoods on data
 	void likelihoods( const array<T> &x, array<T> &p)
 	{
@@ -250,6 +255,7 @@ public:
 			}
 	}
 
+public:
 	// Save the data
 	void save( const std::string& filename)
 	{
