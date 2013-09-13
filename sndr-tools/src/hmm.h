@@ -415,20 +415,19 @@ private:
 			array<int> s;
 			iviterbi( lB, a, b, pp, s);
 
-			// Find fusion point (where all possible solutions converge to the same state)
-			int t = 0;
+			// Find fusion point, where all possible solutions converge to the same state
+			int t = -1;
 			for( int j=0; j<s.n; ++j){
-				bool e = true;
-				for( int i=0; i<S-1; ++i)
-					e &= s(i,j) == s(i+1,j);
-
-				if( !e){
-					t = j;
-					break;
+				for( int i=0; i<S-1; ++i) {
+					if (s(i,j) != s(i+1,j)) {
+					  t = j;
+					  j = s.n; // break out of outer loop too
+					  break;
+					}
 				}
 			}
 
-			if( t > 0){
+			if( t >= 0){
 				// Keep advance
 				for( int i=0; i<t; ++i)
 					q(a+i) = s(0,i);
