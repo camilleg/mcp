@@ -654,16 +654,10 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 	H.lA(h1.S+h2.S-1, 0)    = log( p2);
 
 	// Normalize them.
-	T ps = 0;
-	for( int i=0; i<H.S; ++i)
-		ps += exp( H.lPi(i));
-	for( int i=0; i<H.S; ++i)
-		H.lPi(i) = log( exp( H.lPi(i))/ps);
+	H.lPi.normalize_log();
 
-	for( int i=0; i<h1.S; ++i)
-		H.lA(h1.S-1,i) += log( (1.-p1));		// why not log1p(-p1) ?
-	for( int i=0; i<h2.S; ++i)
-		H.lA(h1.S+h2.S-1,h1.S+i) += log( (1.-p2));	// why not log1p(-p2) ?
+	for( int i=0; i<h1.S; ++i) H.lA(h1.S     -1,      i) += log1p(-p1);
+	for( int i=0; i<h2.S; ++i) H.lA(h1.S+h2.S-1, h1.S+i) += log1p(-p2);
 }
 
 #endif

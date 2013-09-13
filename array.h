@@ -226,10 +226,20 @@ public:
 	void normalize()
 	{
 	  T sum = 0;
-	  for (size_t i = 0; i < size(); ++i) sum += v[i];
+	  for (size_t i=0; i<size(); ++i) sum += v[i];
 	  if (sum == 0)
 	    return;
-	  for (size_t i = 0; i < size(); ++i) v[i] /= sum;
+	  for (size_t i=0; i<size(); ++i) v[i] /= sum;
+	}
+
+	// Scale log-elements so they sum to unity.
+	void normalize_log()
+	{
+	  T sum = 0;
+	  for (size_t i=0; i<size(); ++i) sum += exp(v[i]);
+	  if (sum == 0)
+	    return;
+	  for (size_t i=0; i<size(); ++i) v[i] = log(exp(v[i]) / sum);
 	}
 
 	// Scale elements so largest element is unity.
@@ -237,17 +247,17 @@ public:
 	void normalize_max1()
 	{
 	  T a = 0;
-	  for (size_t i = 0; i < size(); ++i) a = std::max(a, v[i]);
+	  for (size_t i=0; i<size(); ++i) a = std::max(a, v[i]);
 	  if (a == 0)
 	    return;
-	  for (size_t i = 0; i < size(); ++i) v[i] /= a;
+	  for (size_t i=0; i<size(); ++i) v[i] /= a;
 	}
 
 	// Scale elements in j'th row so they sum to unity.
 	void normalize(const size_t j)
 	{
 	  if (j >= n)
-	    throw std::runtime_error( "array::normalize(): j out of range");			
+	    throw std::runtime_error( "array::normalize(" + to_str(j) + ") arg exceeds second dimension " + to_str(n));			
 	  T sum = 0;
 	  for (size_t i=0; i<m; ++i) sum += v[i+j*m]; // v(i,j);
 	  if (sum == 0)
