@@ -23,7 +23,10 @@ public:
 private:
 	T dg;  // Diagonal load
 public:
-	array<T> ldt, c, m, is;
+	array<T> ldt;	// ?
+	array<T> c;	// priors
+	array<T> m;	// means
+	array<T> is;	// inverse variances
 
 	// Constructor with default values
 	gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
@@ -47,14 +50,15 @@ public:
 
 		// Check input
 		for( int i = 0 ; i < M*N ; ++i)
-			if( isinf( x(i)) | isnan( x(i)))
+			if( isinf( x(i)) || isnan( x(i)))
 				throw std::runtime_error( "gmm_t::train() got infinity or NaN.");
 
-		// Setup arrays
+		// Setup
 		ldt.resize( K);
 		c.resize( K);
 		m.resize( M, K);
 		is.resize( M, K);
+
 		array<T> p( N, K);
 		array<T> lk( iters);
 
@@ -80,11 +84,10 @@ public:
 				ldt(k) = 0;
 				c(k) = 1.;
 				for( int i = 0 ; i < M ; i++){
+					const int ri = (N-1)*double( rand())/RAND_MAX;
+					m(i,k) = x(ri,i);
 //					m(i,k) = x(k,i);
 //					m(i,k) = T( rand())/RAND_MAX - .5;
-					int ri = (N-1)*double( rand())/RAND_MAX;
-//					std::cout << ri << std::endl;
-					m(i,k) = x(ri,i);
 					T vm = 0;
 					for( int j = 0 ; j < N ; j++)
 						vm += x(j,i);
@@ -177,14 +180,11 @@ public:
 				if( learn(k)) {
 					// Means
 					for( int i = 0 ; i < M ; i++){
-#if 1
 						T ms = 0;
 						for( int j = 0 ; j < N ; j++)
 							ms += x(j,i) * p(j,k);
 						m(i,k) = ms/ps;
-#else
-						m(i,k) = cblas_ddot( N, &x.v[x.m*i], 1, &p.v[p.m*k], 1)/ps;
-#endif
+					//	m(i,k) = cblas_ddot( N, &x.v[x.m*i], 1, &p.v[p.m*k], 1)/ps;
 					}
 
 					// Variances
@@ -199,13 +199,12 @@ public:
 				}
 			}
 
-			// Remove blown up states
 			int nK = K;
-			for( int k = 0 ; k < K ; k++)
-				if( isinf( ldt(k)) | isnan( ldt(k)) )
+			for( int k=0; k<K; ++k)
+				if( isinf( ldt(k)) || isnan( ldt(k)) )
 					--nK;
 			if( nK != K){
-				std::cout << "GMM Iteration " << it << ", " << K-nK << " blown states" << std::endl;
+				std::cout << "GMM iteration " << it << ", " << K-nK << " removing blown-up states" << std::endl;
 				array<T> m2( m), is2( is), c2( c), ldt2( ldt);
 				array<int> learn2( learn);
 				m.resize( M, nK);
@@ -214,7 +213,7 @@ public:
 				ldt.resize( nK);
 				p.resize( N, nK);
 				for( int k = 0, ck = 0 ; k < K ; k++){
-					if( !isinf( ldt2(k)) & !isnan( ldt2(k)) ){
+					if( !isinf( ldt2(k)) && !isnan( ldt2(k)) ){
 						learn(ck) = learn2(k);
 						ldt(ck) = ldt2(k);
 						c(ck) = c2(k);
