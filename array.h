@@ -222,6 +222,27 @@ public:
 		return v[size()-1];
 	}
 
+	// Scale elements so they sum to unity.
+	void normalize()
+	{
+	  T sum = 0;
+	  for (size_t i = 0; i < size(); ++i) sum += v[i];
+	  if (sum == 0)
+	    return;
+	  for (size_t i = 0; i < size(); ++i) v[i] /= sum;
+	}
+
+	// Scale elements so largest element is unity.
+	// Assumes that all elements are nonnegative.
+	void normalize_max1()
+	{
+	  T a = 0;
+	  for (size_t i = 0; i < size(); ++i) a = std::max(a, v[i]);
+	  if (a == 0)
+	    return;
+	  for (size_t i = 0; i < size(); ++i) v[i] /= a;
+	}
+
 	// Number of elements
 	size_t size() const { return m*n*k; }
 	bool empty() const { return size() == 0; }

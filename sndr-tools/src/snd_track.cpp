@@ -283,16 +283,8 @@ int main( int argc, const char **argv)
 	}
 
 	// Normalize the inputs
-	real_t amx = 0;
-	for( size_t i = 0 ; i < targ.size() ; ++i)
-		amx = max( amx, targ(i));
-	for( size_t i = 0 ; i < targ.size() ; ++i)
-		targ(i) /= amx;
-	amx = 0;
-	for( size_t i = 0 ; i < in.size() ; ++i)
-		amx = max( amx, in(i));
-	for( size_t i = 0 ; i < in.size() ; ++i)
-		in(i) /= amx;
+	targ.normalize_max1();
+	in.normalize_max1();
 
 	// Start tracking performance
 	struct timeval time;

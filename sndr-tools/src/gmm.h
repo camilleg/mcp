@@ -109,15 +109,7 @@ public:
 				}
 			}
 		}
-
-		//  Normalize priors
-		{
-			T cs = 0;
-			for( int k = 0 ; k < K ; k++)
-				cs += c(k);
-			for( int k = 0 ; k < K ; k++)
-				c(k) /= cs;
-		}
+		c.normalize();
 
 		// Start iterating
 		for( int it = 0 ; it < iters ; it++){
