@@ -22,7 +22,7 @@ public:
 	array<T> lPi, lA; // Model parameters
 
 	// Gaussian mixture data
-	array<T> ldt;	// ?
+	array<T> ldt;	// covariances
 	array<T> c;	// priors
 	array<T> m;	// means
 	array<T> is;	// inverse variances
@@ -258,11 +258,7 @@ public:
 				}
 			}
 			for( int s=0; s<S; ++s){
-				T sc = 0;
-				for( int k=0; k<K; ++k)
-					sc += c(k,s);
-				for( int k=0; k<K; ++k)
-					c(k,s) /= sc;
+				c.normalize(s);
 			}
 			// ******* IS SCALING RIGHT?  I get c = [1 1 1 1 1 ...]
 

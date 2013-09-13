@@ -243,6 +243,18 @@ public:
 	  for (size_t i = 0; i < size(); ++i) v[i] /= a;
 	}
 
+	// Scale elements in j'th row so they sum to unity.
+	void normalize(const size_t j)
+	{
+	  if (j >= n)
+	    throw std::runtime_error( "array::normalize(): j out of range");			
+	  T sum = 0;
+	  for (size_t i=0; i<m; ++i) sum += v[i+j*m]; // v(i,j);
+	  if (sum == 0)
+	    return;
+	  for (size_t i=0; i<m; ++i) v[i+j*m] /= sum;
+	}
+
 	// Number of elements
 	size_t size() const { return m*n*k; }
 	bool empty() const { return size() == 0; }

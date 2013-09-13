@@ -23,7 +23,7 @@ public:
 private:
 	T dg;  // Diagonal load
 public:
-	array<T> ldt;	// ?
+	array<T> ldt;	// covariances
 	array<T> c;	// priors
 	array<T> m;	// means
 	array<T> is;	// inverse variances

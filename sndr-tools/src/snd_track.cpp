@@ -21,10 +21,7 @@ using namespace std;
 	typedef double real_t;
 #endif
 
-
-//
 // Feature extraction
-//
 
 int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, real_t tsz, int hp, 
 	int b, string opt, real_t mnf, real_t mxf, int av, real_t thr, real_t thrm = true)
@@ -110,10 +107,7 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 	return sz;
 }
 
-
-//
 // Learning
-//
 
 int learn( const array<real_t> &in, const array<real_t> &s, int K, int it, array<real_t> &t, hmm_t<real_t> &H)
 {
@@ -153,15 +147,16 @@ int learn( const array<real_t> &in, const array<real_t> &s, int K, int it, array
 	//
 
 	// Make sure that we can fit all that stuff
-	int M = G1.m.m;
+	const int M = G1.m.m;
 	H.S = 2;
 	H.K = G1.K;
 	H.lPi.resize( H.S);
-	H.lA.resize( H.S, H.S);
-	H.c.resize( H.K, H.S);
-	H.ldt.resize( H.K, H.S);
-	H.m.resize( M, H.K, H.S);
-	H.is.resize( M, H.K, H.S);
+	H.lA .resize( H.S, H.S);
+
+	H.ldt.resize(    H.K, H.S);
+	H.c  .resize(    H.K, H.S);
+	H.m  .resize( M, H.K, H.S);
+	H.is .resize( M, H.K, H.S);
 
 	// Copy the GMMs over to the HMM states
 	for( int k = 0 ; k < G1.K ; ++k){
@@ -192,21 +187,15 @@ int learn( const array<real_t> &in, const array<real_t> &s, int K, int it, array
 	H.lPi(1) = log( .5);
 
 	// Norm the priors
-	for( int i = 0 ; i < H.S ; ++i){
-		real_t c = 0;
-		for( int k = 0 ; k < H.K ; ++k)
-			c += H.c(k,i);
-		for( int k = 0 ; k < H.K ; ++k)
-			H.c(k,i) /= c;
+	for( int i=0; i<H.S; ++i){
+		H.c.normalize(i);
 	}
 	cout << "Packed models in an HMM" << endl;
 	return 0;
 #endif
 }
 
-//
 // Find the target
-//
 
 array<int> search( const array<real_t> &in, hmm_t<real_t> &H, array<real_t> &b)
 {
@@ -217,9 +206,7 @@ array<int> search( const array<real_t> &in, hmm_t<real_t> &H, array<real_t> &b)
 }
 
 
-//
 // Main routine
-//
 
 // Options structure
 struct Options{
