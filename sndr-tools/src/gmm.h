@@ -122,9 +122,7 @@ public:
 		// Start iterating
 		for( int it = 0 ; it < iters ; it++){
 
-			//
-			// Expectation step
-			//
+			// *** Expectation step ***
 
 #pragma omp parallel for
 			for( int k = 0 ; k < K ; k++){
@@ -155,18 +153,16 @@ public:
 					p(j,i) -= t;
 				lk(it) += t;
 			}
-			if( !(it%25) || it == iters-1){
+			if( ((it+1)%5==0) || it == iters-1){
 			  std::cout << "GMM Iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 			}
 
-			// Get out of log domain
+			// Exit log domain
 			for( int i = 0 ; i < K*N ; i++)
 				p(i) = exp( p(i));
 
 
-			//
-			// Maximization step
-			//
+			// *** Maximization step ***
 
 #pragma omp parallel for
 			for( int k = 0 ; k < K ; k++){
@@ -255,7 +251,6 @@ private:
 	}
 
 public:
-	// Save the data
 	void save( const std::string& filename)
 	{
 		using namespace std;
@@ -277,7 +272,6 @@ public:
 		f.write( (char*)&is(0), is.m*K*sizeof( T));
 	}
 
-	// Load the data
 	void load( const std::string& filename)
 	{
 		using namespace std;

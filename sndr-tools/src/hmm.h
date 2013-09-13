@@ -20,7 +20,12 @@ public:
 	int S; // States
 	int K; // Gaussians per state
 	array<T> lPi, lA; // Model parameters
-	array<T> ldt, c, m, is; // Gaussian mixture data
+
+	// Gaussian mixture data
+	array<T> ldt;	// ?
+	array<T> c;	// priors
+	array<T> m;	// means
+	array<T> is;	// inverse variances
 private:
 	array<T> la, lb, xi, txi; // Various parameters for Baum-Welch iterations
 
@@ -139,6 +144,7 @@ public:
 			// *** Expectation step ***
 
 			// Get likelihoods from each gaussian from each state
+#pragma omp parallel for
 			for( int s=0; s<S; ++s){
 				for( int k=0; k<K; ++k){
 					T gc = log( c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
@@ -151,7 +157,7 @@ public:
 				}
 			}
 
-			// Get overall state likelihoods
+			// Compute overall state likelihoods
 			for( int s=0; s<S; ++s)
 				for( int j=0; j<N; ++j){
 					T tp = log( 0.0);
@@ -175,7 +181,7 @@ public:
 			for( int i=0; i<S; ++i)
 				lb(i,N-1) = log( 0.0);
 			lb(S-1,N-1) = 0;
-			for( int t = N-2 ; t > -1 ; t--)
+			for( int t = N-2; t >= 0; --t)
 				for( int i=0; i<S; ++i){
 					T ls = log( 0.0);
 					for( int j=0; j<S; ++j)
@@ -218,7 +224,7 @@ public:
 				std::cout << "HMM iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 			}
 
-			// Get out of log domain
+			// Exit log domain
 			for( int i=0; i<N*K*S; ++i)
 				g(i) = exp( g(i));
 
@@ -333,8 +339,6 @@ private:
 	void viterbi( const array<T> &lB, array<int> &q, const int ist = -1)
 	{
 		const int N = lB.n;
-
-		// Temp space
 		array<T> d( S, 2);
 		array<int> p( S, N);
 
@@ -349,7 +353,7 @@ private:
 				nlPi(i) = lPi(i);
 
 		// Initialize
-		int di = 0;
+		bool di = 0;
 		for( int i=0; i<S; ++i){
 			d(i,di) = nlPi(i) + lB(i,0);
 			p(i,0) = 0;
@@ -377,11 +381,9 @@ private:
 			di = !di;
 		}
 
-		// Allocate output
-		q.resize( N);
-
 		// Terminate
 		T l = d(0,di);
+		q.resize( N);
 		q(N-1) = 0;
 		for( int i=1; i<S; ++i)
 			if( d(i,di) > l){
@@ -390,7 +392,7 @@ private:
 			}
 
 		// Backtrack
-		for( int t = N-2 ; t >= 0 ; t--)
+		for( int t = N-2; t >= 0; --t)
 			q(t) = p(q(t+1),t+1);
 	}
 
@@ -399,8 +401,6 @@ private:
 	{
 		const int M = lB.m;
 		const int N = lB.n;
-
-		// Allocate output
 		q.resize( N);
 
 		// Initial probability vector
@@ -448,12 +448,11 @@ private:
 	{
 		const int N = b-a;
 
-		// Temp space
 		array<T> d( S, 2);
 		array<int> p( S, N);
 		
 		// Initialize
-		int di = 0;
+		bool di = 0;
 		for( int i=0; i<S; ++i){
 			d(i,di) = lP(i) + lB(i,a);
 			p(i,0) = 0;
@@ -481,21 +480,18 @@ private:
 			di = !di;
 		}
 
-		// Allocate output
-		q.resize( S, N);
-
 		// Try all possible terminations
+		q.resize( S, N);
 		for( int i=0; i<S; ++i){
 			q(i,N-1) = i;
 			
 			// Backtrack
-			for( int t = N-2 ; t >= 0 ; t--)
+			for( int t = N-2; t >= 0; --t)
 				q(i,t) = p(q(i,t+1),t+1);
 		}
 	}
 
 public:
-	// Save model
 	void save( const std::string& filename)
 	{
 		using namespace std;
@@ -538,7 +534,6 @@ public:
 		cout << "Saved HMM file " << filename << ".\n";
 	}
 
-	// Load model
 	void load( const std::string& filename)
 	{
 		using namespace std;
