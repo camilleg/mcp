@@ -69,8 +69,8 @@ public:
     const int N = x.m;
 
     // Check input
-    for( int i = 0 ; i < M*N ; ++i)
-      if( isinf( x(i)) || isnan( x(i)))
+    for( int i=0; i<M*N; ++i)
+      if(isinf(x[i]) || isnan(x[i]))
 	throw std::runtime_error( "gmm_t::train() got infinity or NaN.");
 
     // Setup
@@ -131,7 +131,7 @@ public:
       }
       c.normalize();
 
-    // Start iterating
+    // Iterate expectation-maximization.
     for( int it = 0 ; it < iters ; it++){
 
       // *** Expectation step ***
@@ -169,68 +169,79 @@ public:
 	std::cout << "GMM iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 
       // Exit log domain
-      for( int i = 0 ; i < K*N ; i++)
-      p(i) = exp( p(i));
-
+      for (int i=0; i<K*N; ++i)
+	p[i] = exp(p[i]);
 
       // *** Maximization step ***
+      maximize(p, x, learn);
 
-#pragma omp parallel for
-      for( int k = 0 ; k < K ; k++){
-	// Weights
-	const T ps = p.sum(k);
-	c(k) = ps/N;
-
-	if( learn(k)) {
-	  // Means
-	  for( int i = 0 ; i < M ; i++){
-	    T ms = 0;
-	    for( int j = 0 ; j < N ; j++)
-	      ms += x(j,i) * p(j,k);
-	    // ms == cblas_ddot( N, &x.v[x.m*i], 1, &p.v[p.m*k], 1);
-	    m(i,k) = ms/ps;
-	  }
-
-	  // Variances
-	  ldt(k) = 0;
-	  for( int i = 0 ; i < M ; i++){
-	    T ss = dg;
-	    for( int j = 0 ; j < N ; j++)
-	      ss += (x(j,i)-m(i,k))*(x(j,i)-m(i,k))*p(j,k);
-	    is(i,k) = ps/ss;
-	    ldt(k) += log( is(i,k));
-	  }
-	}
-      }
-
+      // Remove blown-up states
       int nK = K;
-      for( int k=0; k<K; ++k)
-	if( isinf( ldt(k)) || isnan( ldt(k)) )
+      for (int k=0; k<K; ++k)
+	if (isinf(ldt(k)) || isnan(ldt(k)))
 	  --nK;
-      if( nK != K){
-	std::cout << "GMM iteration " << it << ", " << K-nK << " removing blown-up states" << std::endl;
-	array<T> m2( m), is2( is), c2( c), ldt2( ldt);
-	array<int> learn2( learn);
-
-	m.resize( M, nK);
-	is.resize( M, nK);
-	c.resize( nK);
-	ldt.resize( nK);
-
-	p.resize( N, nK);
-	for( int k = 0, ck = 0 ; k < K ; k++){
-	  if( !isinf( ldt2(k)) && !isnan( ldt2(k)) ){
+      if (nK != K){
+	std::cout << "GMM iteration " << it << ", removing " << K-nK << " blown-up states." << std::endl;
+	// Copy constructor is overkill, because the .v[] std::copy's will get clobbered in the k-loop.
+	// But at least the copy constructor correctly sets dimensions of the xxx2 arrays.
+	array<T> m2(m), is2(is), c2(c), ldt2(ldt);
+	array<int> learn2(learn);
+	m  .resize(M, nK);
+	is .resize(M, nK);
+	c  .resize(   nK);
+	ldt.resize(   nK);
+	p.resize(N, nK);
+	for (int k=0, ck=0; k<K; ++k){
+	  if (!isinf(ldt2(k)) && !isnan(ldt2(k))) {
+	    // Copy nonblownup state from old arrays ("2", k, K) to new arrays (ck, nK).
 	    learn(ck) = learn2(k);
 	    ldt(ck) = ldt2(k);
 	    c(ck) = c2(k);
-	    for( int i = 0 ; i < M ; i++){
-	      m(i,ck) = m2(i,k);
+	    for (int i=0; i<M; ++i) {
+	      m (i,ck) = m2 (i,k);
 	      is(i,ck) = is2(i,k);
 	    }
-	    ck++;
+	    ++ck;
 	  }
 	}
 	K = nK;
+      }
+    }
+  }
+
+  // Maximization step of expectation-maximization.
+  // Update arg p and members c, m, is, ldt.
+  void maximize(array<T>& p, const array<T> &x, const array<int>& learn)
+  {
+    const int M = x.n;
+    const int N = x.m;
+    if (K != int(learn.size()) || K != int(p.n) || N != int(p.m))
+      throw std::runtime_error( "gmm_t::maximize(): Incompatible sizes");
+#pragma omp parallel for
+    for(int k=0; k<K; ++k){
+      // Weights
+      const T ps = p.sum(k);
+      c(k) = ps/N;
+
+      if (learn(k)) {
+	// Means
+	for (int i=0; i<M; ++i){
+	  T ms = 0;
+	  for (int j=0; j<N; ++j)
+	    ms += x(j,i) * p(j,k);
+	  // ms == cblas_ddot( N, &x.v[x.m*i], 1, &p.v[p.m*k], 1);
+	  m(i,k) = ms/ps;
+	}
+
+	// Variances
+	ldt(k) = 0;
+	for (int i=0; i<M; ++i){
+	  T ss = dg;
+	  for (int j=0; j<N; ++j)
+	    ss += (x(j,i)-m(i,k)) * (x(j,i)-m(i,k)) * p(j,k);
+	  is(i,k) = ps/ss;
+	  ldt(k) += log( is(i,k));
+	}
       }
     }
   }
@@ -273,9 +284,9 @@ public:
 
     f.write((char*)&K,          sizeof(int)); // number of gaussians
     f.write((char*)&m.m,        sizeof(int)); // dimension
-    f.write((char*)&c(0),       K*sizeof(T)); // priors
-    f.write((char*)&m(0),   m.m*K*sizeof(T)); // means
-    f.write((char*)&is(0), is.m*K*sizeof(T)); // inverse variances
+    f.write((char*)&c[0],       K*sizeof(T)); // priors
+    f.write((char*)&m[0],   m.m*K*sizeof(T)); // means
+    f.write((char*)&is[0], is.m*K*sizeof(T)); // inverse variances
     if (!f)
       throw runtime_error( "gmm_t::save('" + filename + "') failed.");
     cout << "Saved GMM file " << filename << ".\n";
@@ -298,16 +309,16 @@ public:
       throw std::runtime_error( "gmm_t::load(): nonpositive dimension.");
 
     // priors
-    c.resize( K);
-    f.read( (char*)&c(0), K*sizeof( T));
+    c.resize(K);
+    f.read((char*)&c[0], K*sizeof(T));
 
     // means
-    m.resize( M, K);
-    f.read( (char*)&m(0), M*K*sizeof( T));
+    m.resize(M, K);
+    f.read((char*)&m[0], M*K*sizeof(T));
 
     // inverse variances
-    is.resize( M, K);
-    f.read( (char*)&is(0), M*K*sizeof( T));
+    is.resize(M, K);
+    f.read((char*)&is[0], M*K*sizeof(T));
 
     // compute determinants
     ldt.resize( K);
