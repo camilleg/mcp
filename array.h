@@ -12,6 +12,9 @@
 #include <iostream>
 #include <stdexcept>
 #include <sstream> // for to_str()
+#ifdef __CHECK
+#include <limits> // for NaN
+#endif
 
 // C++-11 deprecates this with std::to_string().
 // Or we could use boost::lexical_cast<std::string>().
@@ -159,7 +162,7 @@ public:
 			if( alias)
 				throw std::runtime_error( "array::resize(): forbidden for alias array");
 			m = i1; n = i2; k = i3;
-			delete [] v; // might be NULL, but that's ok
+			delete [] v; // ok if NULL
 			try{
 				v = new T[size()];
 			}
@@ -167,6 +170,10 @@ public:
 				throw std::runtime_error( "array::resize() failed to allocate " + to_str(m) + " x " + to_str(n) + " x " + to_str(k) + " elements\n" );
 			}
 		}
+#ifdef __CHECK
+		for (size_t i=0; i<size(); ++i)
+			v[i] = std::numeric_limits<T>::signaling_NaN();
+#endif
 	}
 
 	// Todo: remove special treatment of vectors (1,n,1) and (1,1,k), leaving only (m,1,1).
@@ -182,12 +189,16 @@ public:
 		try{
 			T* v2 = new T[i];
 			std::copy(v, v+size(), v2);
+#ifdef __CHECK
+			for (size_t j=size(); j<i; ++j)
+				v2[j] = std::numeric_limits<T>::signaling_NaN();
+#endif
 			delete [] v;
 			v = v2;
 			if (empty()) m=i, n=k=1;
-			else if( m == size()) m = i;
-			else if( n == size()) n = i;
-			else if( k == size()) k = i;
+			else if(m == size()) m = i;
+			else if(n == size()) n = i;
+			else if(k == size()) k = i;
 		}
 		catch( std::bad_alloc& ){
 			throw std::runtime_error( "array::grow(): error allocating memory");
