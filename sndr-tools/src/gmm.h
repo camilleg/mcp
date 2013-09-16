@@ -18,11 +18,11 @@
 // Gaussian mixture model class
 template <class T>
 class gmm_t {
-  public:
+public:
   int K; // Gaussians
-  private:
+private:
   T dg;  // Diagonal load
-  public:
+public:
   array<T> ldt;	// covariances
   array<T> c;	// priors
   array<T> m;	// means
@@ -30,17 +30,36 @@ class gmm_t {
 
   // Constructor with default values
   gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
-  private:
 
-  // log sum
-  inline T lsum( T x, T y)
+private:
+  // Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
+  inline void logadd( T& x, const T& y)
   {
-    return x == y ?
-    x+log(2.) :
-    std::max( x, y) + log1p( exp( -fabs( x-y)));
+    if (y == -INFINITY) {
+      // x remains unchanged, trivially.
+      return;
+    }
+    if (x == -INFINITY && isnan(y)) {
+      // y might be -HUGE_VAL, from log(0.0).
+      return;
+    }
+
+    if (isnan(x) || isnan(y))
+    throw std::runtime_error( "hmm_t::logadd(" + to_str(x) + ", " + to_str(y) + ")");
+
+    const T z = fabs(x-y);
+    if (z > 30.0) {
+      x = std::max(x, y);
+      return;
+    }
+    if (x == y) {		// Is this special case worth testing for?
+      x += log(2.0);
+      return;
+    }
+    x = std::max(x, y) + log1p(exp(-z));
   }
 
-  public:
+public:
   // Learn data
   void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
   {
@@ -140,7 +159,7 @@ class gmm_t {
       for( int j = 0 ; j < N ; j++){
 	T t = p(j);
 	for( int i = 1 ; i < K ; i++)
-	  t = lsum( t, p(j,i));
+	  logadd(t, p(j,i));
 	for( int i = 0 ; i < K ; i++)
 	  p(j,i) -= t;
 	lk(it) += t;
@@ -220,7 +239,8 @@ private:
   void likelihoods( const array<T> &x, array<T> &p)
   {
     // Check sizes and allocate output
-    int M = x.n, N = x.m;
+    const int M = x.n;
+    const int N = x.m;
     if( M != m.m)
       throw std::runtime_error( "gmm_t::likelihoods(): Incompatible sizes");
     p.resize( N);
@@ -229,12 +249,12 @@ private:
 
     //#pragma omp parallel for
     for( int k = 0 ; k < K ; k++){
-      T gc = log( c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI);
+      const T gc = log( c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI);
       for( int j = 0 ; j < N ; j++){
 	T qt = 0;
 	for( int i = 0 ; i < M ; i++)
 	  qt += is(i,k) * (x(j,i) - m(i,k)) * (x(j,i) - m(i,k));
-	p(j) = lsum( p(j), gc - 0.5*qt);
+	logadd( p(j), gc - 0.5*qt);
       }
     }
   }
@@ -245,20 +265,11 @@ public:
     using namespace std;
     ofstream f( filename.c_str(), ios::out | ios::binary);
 
-    // number of gaussians
-    f.write( (char*)&K, sizeof( int));
-
-    // dimension
-    f.write( (char*)&m.m, sizeof( int));
-
-    // priors
-    f.write( (char*)&c(0), K*sizeof( T));
-
-    // means
-    f.write( (char*)&m(0), m.m*K*sizeof( T));
-
-    // inverse variances
-    f.write( (char*)&is(0), is.m*K*sizeof( T));
+    f.write((char*)&K,          sizeof( int)); // number of gaussians
+    f.write((char*)&m.m,        sizeof( int)); // dimension
+    f.write((char*)&c(0),       K*sizeof( T)); // priors
+    f.write((char*)&m(0),   m.m*K*sizeof( T)); // means
+    f.write((char*)&is(0), is.m*K*sizeof( T)); // inverse variances
   }
 
   void load( const std::string& filename)

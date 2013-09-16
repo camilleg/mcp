@@ -16,7 +16,7 @@
 
 template <class T>
 class hmm_t {
-  public:
+public:
   int S; // States
   int K; // Gaussians per state
   array<T> lPi, lA; // Model parameters
@@ -26,14 +26,14 @@ class hmm_t {
   array<T> c;	// priors
   array<T> m;	// means
   array<T> is;	// inverse variances
-  private:
+private:
   array<T> la, lb, xi, txi; // Various parameters for Baum-Welch iterations
 
-  public:
+public:
   // Constructor
   hmm_t( int s = 0, int k = 1) : S(s), K(k) {}
 
-  private:
+private:
   // Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
   inline void logadd( T& x, const T& y)
   {
@@ -61,7 +61,7 @@ class hmm_t {
     x = std::max(x, y) + log1p(exp(-z));
   }
 
-  public:
+public:
   // Learn data
   void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
   {
@@ -480,7 +480,7 @@ private:
     }
   }
 
-  public:
+public:
   void save( const std::string& filename)
   {
     using namespace std;
