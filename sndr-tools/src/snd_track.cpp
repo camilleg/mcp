@@ -100,7 +100,7 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 	}
 
 	// Transpose in place to make the cache happy during training
-	intp( &f(0), f.m, f.n);
+	intp( &f[0], f.m, f.n);
 	f.k = f.m; f.m = f.n; f.n = f.k; f.k = 1;
 	
 	// Return window size in samples
@@ -205,20 +205,16 @@ array<int> search( const array<real_t> &in, hmm_t<real_t> &H, array<real_t> &b)
 	return o;
 }
 
-
-// Main routine
-
-// Options structure
-struct Options{
-	int b, K, it, m, av;
-	real_t nfn, mn_freq, mx_freq, tsz;
-	real_t tgs, tge, thr, hp, mw;
-	array<real_t> tr, B;
-	string sf_in, sf_targ, opt, fo, edl;
-};
-
 int main( int argc, const char **argv)
 {
+	struct Options {
+	  int b, K, it, m, av;
+	  real_t nfn, mn_freq, mx_freq, tsz;
+	  real_t tgs, tge, thr, hp, mw;
+	  array<real_t> tr, B;
+	  string sf_in, sf_targ, opt, fo, edl;
+	};
+
 	// Get options
 	Options O;
 	O.sf_in = getoption<string>( "-i", argc, argv, "", "Input sound"); // Input sound
@@ -247,7 +243,7 @@ int main( int argc, const char **argv)
 	wavfile_t sfi( O.sf_in, ios::in);
 	array<real_t> in( sfi.frames);
 	sfi.read_mono( in);
-	cout << "Loaded input soundfile, " << double( sfi.frames)/sfi.samplerate << " secs" << endl;
+	cout << argv[0] << ": loaded input soundfile of " << double( sfi.frames)/sfi.samplerate << " seconds." << endl;
 
 	// Is the target sound a subset of the input?
 	array<real_t> targ;
@@ -256,13 +252,13 @@ int main( int argc, const char **argv)
 		targ.resize( ie-is);
 		for( int i = 0 ; i < ie-is ; ++i)
 			targ(i) = in(is+i);
-		cout << "Located target" << endl;
+		cout << argv[0] << ": located target." << endl;
 	}else{
 		// Load the target sound
 		wavfile_t sfi2( O.sf_targ, ios::in);
 		targ.resize( sfi2.frames);
 		sfi2.read_mono( targ);
-		cout << "Loaded target soundfile, " << double( sfi2.frames)/sfi2.samplerate << " secs" << endl;
+		cout << argv[0] << ": loaded target soundfile of " << double( sfi2.frames)/sfi2.samplerate << " seconds." << endl;
 
 		// Check to make sure that the two sample rates are the same
 		if( sfi.samplerate != sfi2.samplerate)
@@ -282,19 +278,19 @@ int main( int argc, const char **argv)
 	array<real_t> fi, ft;
 	array<int> sl;
 	int sz = fextract( targ, ft, sl, sfi.samplerate, O.tsz, O.hp, O.b, O.opt, O.mn_freq, O.mx_freq, 1, O.thr, true);
-	cout << "Extracted target features, " << ft.m << 'x' << ft.n<< endl;
-	cout << "Analysis window is " << sz << " samples" << endl;
+	cout << argv[0] << ": extracted target features, " << ft.m << " x " << ft.n << "." << endl;
+	cout << argv[0] << ": analysis window has " << sz << " samples." << endl;
 	fextract( in, fi, sl, sfi.samplerate, O.tsz, O.hp, O.b, O.opt, O.mn_freq, O.mx_freq, O.av, O.thr, false);
-	cout << "Extracted input features, " << fi.m << 'x' << fi.n << endl;
+	cout << argv[0] << ": extracted input features, " << fi.m << " x " << fi.n << "." << endl;
 
 	// Do the learning
 	hmm_t<real_t> H;
 	int stth = learn( fi, ft, O.K, O.it, O.tr, H);
-	cout << "Done with learning" << endl;
+	cout << argv[0] << ": learned." << endl;
 
 	// Scan input for target
 	array<int> o = search( fi, H, O.B);
-	cout << "Done with searching" << endl;
+	cout << argv[0] << ": searched." << endl;
 
 	// Relabel silent parts
 	if( O.thr > 0)
@@ -305,7 +301,7 @@ int main( int argc, const char **argv)
 	// Pass a median filter to keep sustained sections
 	if( O.m){
 #if 1
-		cout << "Median filtering state output" << endl;
+		cout << argv[0] << ": median-filtering state output." << endl;
 		array<int> o2( o.size());
 		for( size_t i = 0 ; i < o.size() ; ++i)
 			o2(i) = o(i);
@@ -318,7 +314,7 @@ int main( int argc, const char **argv)
 			o(i) = O.mw*c[0] > c[1] ? 0 : 1;
 		}
 #else
-		cout << "Lowpass filtering state output" << endl;
+		cout << argv[0] << ": lowpass-filtering state output." << endl;
 		array<int> fo( o.size());
 		for( int i = O.m ; i< o.size()-O.m ; ++i){
 			fo(i) = 0;
@@ -334,8 +330,8 @@ int main( int argc, const char **argv)
 	// Show computation time
 	gettimeofday( &time, NULL);
 	const double end_time = time.tv_sec + double( time.tv_usec)/1000000;
-	cout << "Features/Learning/Searching done in " << end_time - start_time << " sec" << endl;
-	cout << "Processing was " << (double( sfi.frames)/sfi.samplerate) / (end_time - start_time) << "x real time" << endl;
+	cout << argv[0] << ": features+learning+searching took " << end_time - start_time << " seconds." << endl;
+	cout << argv[0] << ": processing was " << (double( sfi.frames)/sfi.samplerate) / (end_time - start_time) << " x real time." << endl;
 
 	// Make an EDL list
 	if( O.edl.size()){
@@ -358,7 +354,7 @@ int main( int argc, const char **argv)
 			}
 		if( cl)
 			e << real_t( sfi.frames)/sfi.samplerate << " 0\n";
-		cout << "Dumped EDL file: " << O.edl << endl;
+		cout << argv[0] << ": dumped EDL file " << O.edl << "." << endl;
 	}
 
 	// Make an output file with target sound
@@ -370,5 +366,5 @@ int main( int argc, const char **argv)
 			sf.write( tt);
 			++N;
 		}
-	cout << "Dumped " << N << " of " << o.size() << " frames to " << O.fo << "." << endl;
+	cout << argv[0] << ": dumped " << N << " of " << o.size() << " frames to " << O.fo << "." << endl;
 }
