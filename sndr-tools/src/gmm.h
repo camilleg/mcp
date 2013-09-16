@@ -19,15 +19,16 @@
 template <class T>
 class gmm_t {
 public:
-  int K; // Gaussians
-private:
-  T dg;  // Diagonal load
-public:
-  array<T> ldt;	// covariances
+  // (Don't hide these publics behind accessors until the code stabilizes.)
+  int K;        // Gaussians
+  array<T> ldt;	// covariances aka determinants
   array<T> c;	// priors
   array<T> m;	// means
   array<T> is;	// inverse variances
+private:
+  T dg;  // Diagonal load
 
+public:
   // Constructor with default values
   gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
 
@@ -235,7 +236,8 @@ public:
   }
 
 private:
-  // Evaluate likelihoods on data
+  // Evaluate log likelihoods of data x into p.
+  // Comparing several GMMs' likelihoods()s is like an HMM's classify().
   void likelihoods( const array<T> &x, array<T> &p)
   {
     // Check sizes and allocate output
@@ -263,13 +265,20 @@ public:
   void save( const std::string& filename)
   {
     using namespace std;
+    if (filename.empty())
+      throw runtime_error( "gmm_t::save(\"\") failed.");
     ofstream f( filename.c_str(), ios::out | ios::binary);
+    if (!f)
+      throw runtime_error( "gmm_t::save('" + filename + "') failed.");
 
-    f.write((char*)&K,          sizeof( int)); // number of gaussians
-    f.write((char*)&m.m,        sizeof( int)); // dimension
-    f.write((char*)&c(0),       K*sizeof( T)); // priors
-    f.write((char*)&m(0),   m.m*K*sizeof( T)); // means
-    f.write((char*)&is(0), is.m*K*sizeof( T)); // inverse variances
+    f.write((char*)&K,          sizeof(int)); // number of gaussians
+    f.write((char*)&m.m,        sizeof(int)); // dimension
+    f.write((char*)&c(0),       K*sizeof(T)); // priors
+    f.write((char*)&m(0),   m.m*K*sizeof(T)); // means
+    f.write((char*)&is(0), is.m*K*sizeof(T)); // inverse variances
+    if (!f)
+      throw runtime_error( "gmm_t::save('" + filename + "') failed.");
+    cout << "Saved GMM file " << filename << ".\n";
   }
 
   void load( const std::string& filename)
@@ -280,11 +289,13 @@ public:
     // number of gaussians
     f.read( (char*)&K, sizeof( int));
     if( K <= 0)
-    throw std::runtime_error( "gmm_t::load(): nonpositive number of gaussians.");
+      throw std::runtime_error( "gmm_t::load(): nonpositive number of gaussians.");
 
     // dimension
     int M;
     f.read( (char*)&M, sizeof( int));
+    if( M <= 0)
+      throw std::runtime_error( "gmm_t::load(): nonpositive dimension.");
 
     // priors
     c.resize( K);
@@ -298,12 +309,12 @@ public:
     is.resize( M, K);
     f.read( (char*)&is(0), M*K*sizeof( T));
 
-    // Get the determinants
+    // compute determinants
     ldt.resize( K);
     for( int k = 0 ; k < K ; k++){
-    ldt(k) = 0;
-    for( int i = 0 ; i < M ; i++)
-    ldt(k) += log( is(i,k));
+      ldt(k) = 0;
+      for( int i = 0 ; i < M ; i++)
+	ldt(k) += log( is(i,k));
     }
   }
 

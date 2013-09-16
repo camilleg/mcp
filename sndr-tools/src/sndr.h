@@ -230,7 +230,6 @@ class AudioModel_t{
 public:
 
 #ifdef __HMM_TRAIN
-	hmm_t< gmm_t<T> > compiling_test;
 	hmm_t<T> G; // HMM model for the sound class
 #else
 	gmm_t<T> G; // GMM model for the sound class

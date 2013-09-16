@@ -22,7 +22,7 @@ public:
   array<T> lPi, lA; // Model parameters
 
   // Gaussian mixture data
-  array<T> ldt;	// covariances
+  array<T> ldt;	// covariances aka determinants
   array<T> c;	// priors
   array<T> m;	// means
   array<T> is;	// inverse variances
@@ -66,7 +66,8 @@ public:
   void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
   {
     // Input dims of array are reversed
-    const int M = x.n, N = x.m;
+    const int M = x.n;
+    const int N = x.m;
     std::cout << "HMM training " << M << " x " << N << std::endl;
 
     // Setup state model parameters
@@ -123,14 +124,14 @@ public:
     }
 
     // Allocate buffers
-    array<T> lp( S, N);
     array<T> q( N, K, S);
     array<T> g( N, K, S);
-    la.resize( S, N);
-    lb.resize( S, N);
-    xi.resize( S, S);
-    txi.resize( S, S);
+    array<T> lp( S, N);
     array<T> lk( iters);
+    la .resize( S, N);
+    lb .resize( S, N);
+    xi .resize( S, S);
+    txi.resize( S, S);
 
     // Iterate expectation-maximization
     for( int it=0; it<iters; ++it){
@@ -486,39 +487,23 @@ public:
     using namespace std;
     if (filename.empty())
       throw runtime_error( "hmm_t::save(\"\") failed.");
-
     ofstream f( filename.c_str(), ios::out | ios::binary);
     if (!f)
       throw runtime_error( "hmm_t::save('" + filename + "') failed.");
 
-    // number of states
-    f.write( (char*)&S, sizeof( int));
+    f.write((char*)&S,       sizeof(int)); // number of states
+    f.write((char*)&lPi(0),  S*sizeof(T)); // initial log probabilities
+    f.write((char*)&lA(0), S*S*sizeof(T)); // log transition matrix
+    f.write((char*)&K,       sizeof(int)); // number of gaussians
 
-    // initial log probabilities
-    f.write( (char*)&lPi(0), S*sizeof( T));
-
-    // log transition matrix
-    f.write( (char*)&lA(0), S*S*sizeof( T));
-
-    // number of gaussians
-    f.write( (char*)&K, sizeof( int));
-
-    // dimension
-    const int M = m.size()/(K*S);
-    f.write( (char*)&M, sizeof( int));
-
-    // priors
-    f.write( (char*)&c(0), K*S*sizeof( T));
-
-    // means
-    f.write( (char*)&m(0), M*K*S*sizeof( T));
-
-    // inverse variances
-    f.write( (char*)&is(0), M*K*S*sizeof( T));
+    const int M = m.size() / (K*S);
+    f.write((char*)&M,         sizeof(int)); // dimension
+    f.write((char*)&c(0),    K*S*sizeof(T)); // priors
+    f.write((char*)&m(0),  M*K*S*sizeof(T)); // means
+    f.write((char*)&is(0), M*K*S*sizeof(T)); // inverse variances
 
     if (!f)
       throw runtime_error( "hmm_t::save('" + filename + "') failed.");
-
     cout << "Saved HMM file " << filename << ".\n";
   }
 
@@ -573,7 +558,7 @@ public:
     if (!f)
       throw runtime_error( "hmm_t::load('" + filename + "') failed.");
 
-    // Compute the determinants.
+    // compute determinants
     ldt.resize( K, S);
     for( int s=0; s<S; ++s) {
       for( int k=0; k<K; ++k) {
