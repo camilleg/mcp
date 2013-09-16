@@ -114,10 +114,8 @@ public:
 			// Remove silent frames if proper flag is set
 			if( thrm){
 				// Back up the data
-				array<T> f2( f.m, f.n);
-				for( size_t i = 0 ; i < f.size() ; ++i)
-					f2(i) = f(i);
-				
+				array<T> f2(f);
+
 				// Keep only the loud parts
 				f.resize( F.o, pc);
 				for( size_t i = 0, j = 0 ; i < e.size() ; ++i){
@@ -151,7 +149,7 @@ public:
 		}
 		
 		// Transpose in place to make the cache happy during training
-		intp( &f(0), f.m, f.n);
+		intp( &f[0], f.m, f.n);
 		f.k = f.m; f.m = f.n; f.n = f.k; f.k = 1;
 
 #if 0
@@ -407,7 +405,7 @@ public:
 //				throw std::runtime_error( "AudioClassifier_t<T>::combine(): Input models are not using the same features");
 
 			// Get the GMM inside the model
-			gmm_t<T> &G = (*A).G;
+			gmm_t<T> &G = A->G;
 
 			// Make sure that we can fit all that stuff
 			if( ai == 0){
@@ -451,11 +449,9 @@ public:
 		
 		// Norm the priors
 		for( int i = 0 ; i < H.S ; i++){
-			T s = 0;
-			for( int k = 0 ; k < H.K ; k++)
-				s += H.c(k,i);
-			for( int k = 0 ; k < H.K ; k++)
-				H.c(k,i) -= log( s);
+			const T s = H.c.sum(i);
+			for (int k=0; k<H.K; ++k)
+				H.c(k,i) -= log(s);
 		}
 
 		// Bias the transitions
@@ -474,7 +470,7 @@ public:
 				H.lA(i,j) -= ls;
 		}
 #endif
-		std::cout << "Transition matrix is:\n" << H.lA;
+		std::cout << "Transition matrix:\n" << H.lA;
 	}
 
 	// Classify a new input
@@ -483,12 +479,11 @@ public:
 		// Get the sound features
 		array<T> D;
 		array<int> S;
-//		F.report();
 		F( in, sr, D, S, false);
 
 		// Classify
 		H.classify( D, o, bias);
-		std::cout << "Input is " << in.size() << " window is " << F.sz << " out is " << o.size() << std::endl;
+		std::cout << "Input length " << in.size() << ", window size " << F.sz << ", output length " << o.size() << "." << std::endl;
 
 		// Relabel the silent parts to the last known class
 		if( F.thr > 0){
@@ -502,15 +497,18 @@ public:
 		}
 
 		// Pass through a median filter to smooth out sustained sections
-		if( m > 1){
-			array<int> o2( o.size());
-			for( size_t i = 0 ; i < o.size() ; ++i)
-				o2(i) = o(i);
-			int c[2];
-			for( size_t i = m ; i < o.size()-m ; ++i){
-				c[0] = c[1] = 0;
-				for( int j = -m ; j <= m ; ++j)
-					if( o2(i+j) != -1)
+		if (m > 1) {
+			array<int> o2(o);
+			// Don't use size_t i.  Camille's seen that wraparound to "negative" values.
+			for (int i=m; i < int(o.size()-m); ++i) {
+				if (i < 0) {
+				  // Maybe m is preposterously large, like larger than o.size().
+				  std::cout << "Median filter tried to misbehave: " << i << "," << o.size() << "," << m << "." << std::endl;
+				  break;
+				}
+				int c[2] = {0};
+				for (int j = -m; j <= m; ++j)
+					if (o2(i+j) != -1)
 						++c[o2(i+j)];
 				o(i) = mw*c[0] > c[1] ? 0 : 1;
 			}
