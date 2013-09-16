@@ -197,7 +197,7 @@ int learn( const array<real_t> &in, const array<real_t> &s, int K, int it, array
 
 // Find the target
 
-array<int> search( const array<real_t> &in, hmm_t<real_t> &H, array<real_t> &b)
+array<int> search( const array<real_t> &in, hmm_t<real_t> &H, const array<real_t> &b)
 {
 	// Run the classification
 	array<int> o;

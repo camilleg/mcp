@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <iostream>
 
+#include "gmm.h"
 #include "array.h"
 
 // Hidden Markov Model class
@@ -26,6 +27,7 @@ public:
   array<T> c;	// priors
   array<T> m;	// means
   array<T> is;	// inverse variances
+  array<gmm_t<T> > gmms; // TODO: replaces arrays ldt c m is
 private:
   array<T> la, lb, xi, txi; // Various parameters for Baum-Welch iterations
 
@@ -46,8 +48,15 @@ private:
       return;
     }
 
-    if (isnan(x) || isnan(y))
-    throw std::runtime_error( "hmm_t::logadd(" + to_str(x) + ", " + to_str(y) + ")");
+    if (isnan(x) || isnan(y)) {
+#ifdef __CHECK
+      // gdb shows that isnan typically means -INFINITY plus a constant, i.e., -INFINITY.
+      // throw std::runtime_error( "hmm_t::logadd(" + to_str(x) + ", " + to_str(y) + ")");
+      return;
+#else
+      return;
+#endif
+    }
 
     const T z = fabs(x-y);
     if (z > 30.0) {
@@ -75,6 +84,15 @@ public:
     c.resize( K, S);
     m.resize( M, K, S);
     is.resize( M, K, S);
+
+    gmms.resize(S); // M,N come from x in train().  K comes from constructor, or from load().
+    for( int s=0; s<S; ++s){
+      gmms(s).ldt.resize(K);
+      gmms(s).c.resize(K);
+      gmms(s).m.resize(M,K);
+      gmms(s).is.resize(M,K);
+    }
+
     lPi.resize( S);
     lA.resize( S, S);
 
@@ -85,11 +103,16 @@ public:
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
 	  ldt(k,s) = 0;
+	  gmms(s).ldt(k) = 0;
 	  c  (k,s) = 1./K;
+	  gmms(s).c(k) = 1./K;
 	  for( int i=0; i<M; ++i){
 	    m (i,k,s) = T( rand())/RAND_MAX - 0.5;
+	    gmms(s).m (i,k) = T( rand())/RAND_MAX - 0.5;
 	    is(i,k,s) = 0.1;
+	    gmms(s).is(i,k) = 0.1;
 	    ldt(k,s) += log( is(i,k,s));
+	    gmms(s).ldt(k) += log( is(i,k,s));
 	  }
 	}
       }
@@ -114,6 +137,7 @@ public:
       c   = H.c;
       m   = H.m;
       is  = H.is;
+      gmms = H.gmms;
 
       // Copy values of initial and transition probabilities
       for( int i=0; i<S; ++i){
@@ -186,16 +210,16 @@ public:
 
       // Get Xi
       for( int i=0; i<S*S; ++i)
-	xi(i) = log( 0.0);
+	xi[i] = log(0.0);
       for( int t=0; t<N-1; ++t){
-	T ls = log( 0.0);
+	T ls = log(0.0);
 	for( int i=0; i<S; ++i)
 	  for( int j=0; j<S; ++j){
 	    txi(i,j) = lA(i,j) + la(i,t) + lp(j,t+1) + lb(j,t+1);
 	    logadd( ls, txi(i,j));
 	  }
 	for( int i=0; i<S*S; ++i)
-	  logadd( xi(i), txi(i) - ls);
+	  logadd( xi[i], txi[i] - ls);
       }
 
       // Get gamma
@@ -219,7 +243,7 @@ public:
 
       // Exit log domain
       for( int i=0; i<N*K*S; ++i)
-	g(i) = exp( g(i));
+	g[i] = exp(g[i]);
 
 
       // *** Maximization step ***
@@ -254,6 +278,8 @@ public:
 	c.normalize(s);
       // ******* IS SCALING RIGHT?  I get c = [1 1 1 1 1 ...]
 
+      // TODO: instead of updating Means and Covariances in here, call gmm_t<T>::maximize(g, x, learn);
+
       // Means
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
@@ -266,6 +292,7 @@ public:
 	      sg += t;
 	    }
 	    m(i,k,s) = ms / sg;
+	    gmms(s).m(i,k) = ms / sg;
 	  }
 	}
       }
@@ -274,6 +301,7 @@ public:
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
 	  ldt(k,s) = 0;
+	  gmms(s).ldt(k) = 0;
 	  for( int i=0; i<M; ++i){
 	    T tu = 0;
 	    T sg = 0;
@@ -283,7 +311,9 @@ public:
 	      sg += t;
 	    }
 	    is(i,k,s) = sg / tu;
+	    gmms(s).is(i,k) = sg / tu;
 	    ldt(k,s) += log( is(i,k,s));
+	    gmms(s).ldt(k) += log( is(i,k,s));
 	  }
 	}
       }
@@ -291,7 +321,7 @@ public:
   }
 
   // Classify using a known HMM
-  void classify( const array<T> &x, array<int> &q, array<T> &bias = array<T>(), int ist = -1)
+  void classify( const array<T> &x, array<int> &q, const array<T> &bias = array<T>(), int ist = -1)
   {
     // Input dims of array are reversed
     const int M = x.n, N = x.m;
@@ -299,26 +329,32 @@ public:
     // Get state probabilities
     array<T> lB( S, N);
     for( int i=0; i<S*N; ++i)
-      lB(i) = log(0.0); // Init all lB(s,j)'s.
+      lB[i] = log(0.0); // Init all lB(s,j)'s.
 
 #pragma omp parallel for
     for( int s=0; s<S; ++s)
       for( int k=0; k<K; ++k){
-	const T gc = log( c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
+	const T use_l = ldt(k,s);
+	const T use_c = c(k,s);
+	const T unused = gmms(s).ldt(k);
+	const T unused2 = gmms(s).c(k);
+	const T gc = log(use_c) + 0.5*use_l - 0.5*M*log(2*M_PI);
 	for( int j=0; j<N; ++j){
 	  T qt = 0;
-	  for( int i=0; i<M; ++i)
+	  for( int i=0; i<M; ++i) {
 	    qt += is(i,k,s) * (x(j,i) - m(i,k,s)) * (x(j,i) - m(i,k,s));
+	    (void)(gmms(s).is(i,k) * (x(j,i) - gmms(s).m(i,k)) * (x(j,i) - gmms(s).m(i,k)));
+	  }
 	  logadd( lB(s,j), gc - 0.5*qt);
 	}
       }
 
     // Add the bias to first state
-    if( bias.size()){
-      if( int(bias.size()) != S)
-	throw std::runtime_error( "classify(): bias vector has wrong size");
-      for( int i=0; i<S; ++i)
-	for( int j=0; j<N; ++j)
+    if (!bias.empty()) {
+      if (int(bias.size()) != S)
+	throw std::runtime_error( "classify(): bias vector has mismatched size");
+      for (int i=0; i<S; ++i)
+	for (int j=0; j<N; ++j)
 	  lB(i,j) += bias(i);
     }
 
@@ -492,15 +528,15 @@ public:
       throw runtime_error( "hmm_t::save('" + filename + "') failed.");
 
     f.write((char*)&S,       sizeof(int)); // number of states
-    f.write((char*)&lPi(0),  S*sizeof(T)); // initial log probabilities
-    f.write((char*)&lA(0), S*S*sizeof(T)); // log transition matrix
+    f.write((char*)&lPi[0],  S*sizeof(T)); // initial log probabilities
+    f.write((char*)&lA[0], S*S*sizeof(T)); // log transition matrix
     f.write((char*)&K,       sizeof(int)); // number of gaussians
 
     const int M = m.size() / (K*S);
     f.write((char*)&M,         sizeof(int)); // dimension
-    f.write((char*)&c(0),    K*S*sizeof(T)); // priors
-    f.write((char*)&m(0),  M*K*S*sizeof(T)); // means
-    f.write((char*)&is(0), M*K*S*sizeof(T)); // inverse variances
+    f.write((char*)&c[0],    K*S*sizeof(T)); // priors
+    f.write((char*)&m[0],  M*K*S*sizeof(T)); // means
+    f.write((char*)&is[0], M*K*S*sizeof(T)); // inverse variances
 
     if (!f)
       throw runtime_error( "hmm_t::save('" + filename + "') failed.");
@@ -524,11 +560,11 @@ public:
 
     // initial log probabilities
     lPi.resize( S);
-    f.read( (char*)&lPi(0), S*sizeof( T));
+    f.read( (char*)&lPi[0], S*sizeof( T));
 
     // log transition matrix
     lA.resize( S, S);
-    f.read( (char*)&lA(0), S*S*sizeof( T));
+    f.read( (char*)&lA[0], S*S*sizeof( T));
 
     // number of gaussians
     f.read( (char*)&K, sizeof( int));
@@ -543,17 +579,25 @@ public:
     if (M <= 0)
       throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of dimensions, from scalars " + to_str(m.size()) + ", " + to_str(K) + ", " + to_str(S) + ".");
 
+    gmms.resize(S);
+    for( int s=0; s<S; ++s){
+      gmms(s).ldt.resize(K);
+      gmms(s).c.resize(K);
+      gmms(s).m.resize(M,K);
+      gmms(s).is.resize(M,K);
+    }
+
     // priors
     c.resize( K, S);
-    f.read( (char*)&c(0), K*S*sizeof( T));
+    f.read( (char*)&c[0], K*S*sizeof( T));
 
     // means
     m.resize( M, K, S);
-    f.read( (char*)&m(0), M*K*S*sizeof( T));
+    f.read( (char*)&m[0], M*K*S*sizeof( T));
 
     // inverse variances
     is.resize( M, K, S);
-    f.read( (char*)&is(0), M*K*S*sizeof( T));
+    f.read( (char*)&is[0], M*K*S*sizeof( T));
 
     if (!f)
       throw runtime_error( "hmm_t::load('" + filename + "') failed.");
@@ -587,10 +631,19 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 
   H.lPi.resize(         H.S);
   H.lA .resize(    H.S, H.S);
-  H.c  .resize(    H.K, H.S);
+
   H.ldt.resize(    H.K, H.S);
+  H.c  .resize(    H.K, H.S);
   H.m  .resize( M, H.K, H.S);
   H.is .resize( M, H.K, H.S);
+
+  H.gmms.resize(H.S);
+  for( int s=0; s<H.S; ++s){
+    H.gmms(s).ldt.resize(H.K);
+    H.gmms(s).c.resize(H.K);
+    H.gmms(s).m.resize(M,H.K);
+    H.gmms(s).is.resize(M,H.K);
+  }
 
   // Copy data.
   for( int s=0; s<h1.S; ++s) {
@@ -613,10 +666,11 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
       }
     }
   }
+  // TODO: copy from h1.gmms and h2.gmms to H.gmms.
 
   // Make transition matrix and initial probabilities.
   for( size_t i=0; i < H.lA.size(); ++i)
-    H.lA(i) = -HUGE_VAL;
+    H.lA[i] = -HUGE_VAL;
   for( int i=0; i < h1.S; ++i){
     H.lPi(i) = h1.lPi(i);
     for( int j=0; j < h1.S; ++j)
