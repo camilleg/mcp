@@ -146,7 +146,7 @@ class gmm_t {
 	lk(it) += t;
       }
       if( ((it+1)%5==0) || it == iters-1)
-	std::cout << "GMM Iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
+	std::cout << "GMM iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 
       // Exit log domain
       for( int i = 0 ; i < K*N ; i++)
@@ -157,11 +157,8 @@ class gmm_t {
 
 #pragma omp parallel for
       for( int k = 0 ; k < K ; k++){
-	T ps = 0;
-	for( int i = 0 ; i < N ; i++)
-	  ps += p(i,k);
-
 	// Weights
+	const T ps = p.sum(k);
 	c(k) = ps/N;
 
 	if( learn(k)) {
@@ -170,8 +167,8 @@ class gmm_t {
 	    T ms = 0;
 	    for( int j = 0 ; j < N ; j++)
 	      ms += x(j,i) * p(j,k);
+	    // ms == cblas_ddot( N, &x.v[x.m*i], 1, &p.v[p.m*k], 1);
 	    m(i,k) = ms/ps;
-	  //m(i,k) = cblas_ddot( N, &x.v[x.m*i], 1, &p.v[p.m*k], 1)/ps;
 	  }
 
 	  // Variances

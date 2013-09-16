@@ -256,13 +256,20 @@ public:
 	// Scale elements in j'th row so they sum to unity.
 	void normalize(const size_t j)
 	{
+	  const T t = sum(j);
+	  if (t == 0)
+	    return;
+	  for (size_t i=0; i<m; ++i) v[i+j*m] /= t;
+	}
+
+	// Sum elements in j'th row
+	T sum(const size_t j) const
+	{
 	  if (j >= n)
-	    throw std::runtime_error( "array::normalize(" + to_str(j) + ") arg exceeds second dimension " + to_str(n));			
+	    throw std::runtime_error( "array::sum(" + to_str(j) + ") arg exceeds second dimension " + to_str(n));			
 	  T sum = 0;
 	  for (size_t i=0; i<m; ++i) sum += v[i+j*m]; // v(i,j);
-	  if (sum == 0)
-	    return;
-	  for (size_t i=0; i<m; ++i) v[i+j*m] /= sum;
+	  return sum;
 	}
 
 	// Number of elements
