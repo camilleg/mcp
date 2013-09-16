@@ -117,10 +117,12 @@ public:
 	T& operator()( const size_t i1)
 	{
 #ifdef __CHECK
+		if (empty())
+			throw std::runtime_error( "array::operator()(i1): empty array");
 		if (n > 1 || k > 1)
 			throw std::runtime_error( "array::operator()(i1): missing second or third index");
 		if (i1>=m)
-			throw std::runtime_error( "array::operator()(i1): index out of bounds");
+			throw std::runtime_error( "array::operator()(i1): first index " + to_str(i1) + " overflows dimension " + to_str(m));
 #endif
 		return v[i1];
 	}
