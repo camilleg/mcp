@@ -109,16 +109,10 @@ class hmm_t {
     }else{
 
       // Copy values of Gaussians
-      for( int s=0; s<S; ++s){
-	for( int k=0; k<K; ++k){
-	  ldt(k,s) = H.ldt(k,s);
-	  c(k,s) = H.c(k,s);
-	  for( int i=0; i<M; ++i){
-	    m (i,k,s) = H.m (i,k,s);
-	    is(i,k,s) = H.is(i,k,s);
-	  }
-	}
-      }
+      ldt = H.ldt;
+      c   = H.c;
+      m   = H.m;
+      is  = H.is;
 
       // Copy values of initial and transition probabilities
       for( int i=0; i<S; ++i){
