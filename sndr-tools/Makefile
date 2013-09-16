@@ -1,16 +1,17 @@
 # Compiler
-CXX= g++
-#CXX = icpc
+CXX= g++ # icpc
 
-# Flags
+# Flags.  Don't define -ffast-math, because that breaks isnan().
 CXXFLAGS = -O3 -I..
 CXXFLAGS += -D__NO_RAND_SEED
 ifeq ($(CXX),icpc)
 	CXXFLAGS += -xHOST -ip -no-prec-div -mdynamic-no-pic -openmp -openmp-report0 -vec-report0 -fno-alias
 else
-	CXXFLAGS += -march=native -fopenmp -pedantic -Wall
+	CXXFLAGS += -march=native -fopenmp -pedantic -Wall -D_GNU_SOURCE
+	# _GNU_SOURCE defines NaN
 endif
 # CXXFLAGS += -g -O0
+# CXXFLAGS += -D__CHECK
 LDFLAGS = -lfftw3
 
 # Use float precision (not recommended)
