@@ -279,14 +279,22 @@ public:
 	  for (size_t i=0; i<m; ++i) v[i+j*m] /= t;
 	}
 
+	// Sum elements
+	T sum() const
+	{
+	  T a = 0;
+	  for (size_t i=0; i<size(); ++i) a += v[i];
+	  return a;
+	}
+
 	// Sum elements in j'th row
 	T sum(const size_t j) const
 	{
 	  if (j >= n)
 	    throw std::runtime_error( "array::sum(" + to_str(j) + ") arg exceeds second dimension " + to_str(n));			
-	  T sum = 0;
-	  for (size_t i=0; i<m; ++i) sum += v[i+j*m]; // v(i,j);
-	  return sum;
+	  T a = 0;
+	  for (size_t i=0; i<m; ++i) a += v[i+j*m]; // v(i,j);
+	  return a;
 	}
 
 	// Number of elements
