@@ -131,32 +131,29 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	// Define in and out state threshhold
 	return H1.S;
 #else
-	gmm_t<real_t> G1(K), G2(K);
-	// Syntax error: gmm_t<real_t> G(K)[2];
+	gmm_t<real_t> G[2] = {K,K};
 	// http://stackoverflow.com/questions/18854702/instantiate-c-templated-class-with-arg-and-as-array
 
-	G1.train(in, it);
+	G[0].train(in, it);
 	cout << "Learned UBM." << endl; // overall input
 
-	G2.train(s, it, G1);
+	G[1].train(s, it, G[0]);
 	cout << "Learned target model." << endl; // target sound
 
 	// Make room in HMM
 	H.S = 2;
-	H.K = G1.K;
+	H.K = G[0].K;
 	H.lPi.resize( H.S);
 	H.lA .resize( H.S, H.S);
 	H.gmms.resize(H.S);
 
 	// Copy GMMs into HMM
-	H.gmms(0)  .c = G1.c;
-	H.gmms(0).ldt = G1.ldt;
-	H.gmms(0)  .m = G1.m;
-	H.gmms(0) .is = G1.is;
-	H.gmms(1)  .c = G2.c;
-	H.gmms(1).ldt = G2.ldt;
-	H.gmms(1)  .m = G2.m;
-	H.gmms(1) .is = G2.is;
+	for (int s=0; s<H.S; ++s) {
+	  H.gmms(s)  .c = G[s].c;
+	  H.gmms(s).ldt = G[s].ldt;
+	  H.gmms(s)  .m = G[s].m;
+	  H.gmms(s) .is = G[s].is;
+	}
 
 	// Make the transition matrix row
 	if( t.size() == 0)
@@ -173,9 +170,8 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	H.lPi(1) = log( .5);
 
 	// Normalize the priors
-	for( int i=0; i<H.S; ++i){
+	for (int s=0; s<H.S; ++s)
 		H.gmms(i).c.normalize();
-	}
 	cout << "Packed models in an HMM." << endl;
 	return 0;
 #endif
