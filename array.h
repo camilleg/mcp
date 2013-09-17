@@ -142,8 +142,10 @@ public:
 	T& operator[]( const size_t i1)
 	{
 #ifdef __CHECK
+		if (empty())
+			throw std::runtime_error( "array::operator[]: empty array");
 		if( i1 >= size())
-			throw std::runtime_error( "array::operator[]: index out of bounds");
+			throw std::runtime_error( "array::operator[]: index overflows size " + to_str(size()));
 #endif
 		return v[i1];
 	}
@@ -151,8 +153,10 @@ public:
 	T operator[]( const size_t i1) const
 	{
 #ifdef __CHECK
+		if (empty())
+			throw std::runtime_error( "array::operator[]: empty array");
 		if( i1 >= size())
-			throw std::runtime_error( "array::operator[]: index out of bounds");
+			throw std::runtime_error( "array::operator[]: index overflows size " + to_str(size()));
 #endif
 		return v[i1];
 	}
