@@ -4,7 +4,6 @@
 
 #include "intransp.h"
 #include "aufeat.h"
-#include "gmm.h"
 #include "hmm.h"
 #include "optparse.h"
 
@@ -142,49 +141,22 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	G2.train(s, it, G1);
 	cout << "Learned target model." << endl; // target sound
 
-
 	// Make room in HMM
-	const int M = G1.m.m;
 	H.S = 2;
 	H.K = G1.K;
 	H.lPi.resize( H.S);
 	H.lA .resize( H.S, H.S);
-
-	H.ldt.resize(    H.K, H.S);
-	H.c  .resize(    H.K, H.S);
-	H.m  .resize( M, H.K, H.S);
-	H.is .resize( M, H.K, H.S);
 	H.gmms.resize(H.S);
-#ifdef not_needed
-	for( int s=0; s<H.S; ++s){
-	  H.gmms(s).ldt.resize(   H.K);
-	  H.gmms(s)  .c.resize(   H.K);
-	  H.gmms(s)  .m.resize(M, H.K);
-	  H.gmms(s) .is.resize(M, H.K);
-	}
-#endif
 
 	// Copy GMMs into HMM
-	for( int k = 0 ; k < G1.K ; ++k){
-		H.c(k,0) = G1.c(k);
-		H.c(k,1) = G2.c(k);
-		H.ldt(k,0) = G1.ldt(k);
-		H.ldt(k,1) = G2.ldt(k);
-		for( int i = 0 ; i < M ; ++i){
-			H.m(i,k,0) = G1.m(i,k);
-			H.is(i,k,0) = G1.is(i,k);
-			H.m(i,k,1) = G2.m(i,k);
-			H.is(i,k,1) = G2.is(i,k);
-		}
-	}
-	H.gmms(0).c = G1.c;
+	H.gmms(0)  .c = G1.c;
 	H.gmms(0).ldt = G1.ldt;
-	H.gmms(0).m = G1.m;
-	H.gmms(0).is = G1.is;
-	H.gmms(1).c = G2.c;
+	H.gmms(0)  .m = G1.m;
+	H.gmms(0) .is = G1.is;
+	H.gmms(1)  .c = G2.c;
 	H.gmms(1).ldt = G2.ldt;
-	H.gmms(1).m = G2.m;
-	H.gmms(1).is = G2.is;
+	H.gmms(1)  .m = G2.m;
+	H.gmms(1) .is = G2.is;
 
 	// Make the transition matrix row
 	if( t.size() == 0)
@@ -202,7 +174,6 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 
 	// Normalize the priors
 	for( int i=0; i<H.S; ++i){
-		H.c.normalize(i);
 		H.gmms(i).c.normalize();
 	}
 	cout << "Packed models in an HMM." << endl;

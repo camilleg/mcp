@@ -23,11 +23,7 @@ public:
   array<T> lPi, lA; // Model parameters
 
   // Gaussian mixture data
-  array<T> ldt;	// covariances aka determinants
-  array<T> c;	// priors
-  array<T> m;	// means
-  array<T> is;	// inverse variances
-  array<gmm_t<T> > gmms; // TODO: replaces arrays ldt c m is
+  array<gmm_t<T> > gmms;
 private:
   array<T> la, lb, xi, txi; // Various parameters for Baum-Welch iterations
 
@@ -82,19 +78,14 @@ public:
     std::cout << "HMM training " << M << " x " << N << std::endl;
 
     // Setup state model parameters
-    ldt.resize( K, S);
-    c.resize( K, S);
-    m.resize( M, K, S);
-    is.resize( M, K, S);
-
-    gmms.resize(S); // M,N come from x in train().  K comes from constructor, or from load().
+    gmms.resize(S);
     for( int s=0; s<S; ++s){
+      // M and N come from arg x.  K comes from constructor, or from load().
       gmms(s).ldt.resize(K);
       gmms(s).c.resize(K);
       gmms(s).m.resize(M,K);
       gmms(s).is.resize(M,K);
     }
-
     lPi.resize( S);
     lA.resize( S, S);
 
@@ -104,17 +95,13 @@ public:
       // Initial values for Gaussians
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
-	  ldt(k,s) = 0;
 	  gmms(s).ldt(k) = 0;
-	  c  (k,s) = 1./K;
 	  gmms(s).c(k) = 1./K;
 	  for( int i=0; i<M; ++i){
-	    m (i,k,s) = T( rand())/RAND_MAX - 0.5;
-	    gmms(s).m (i,k) = T( rand())/RAND_MAX - 0.5;
-	    is(i,k,s) = 0.1;
-	    gmms(s).is(i,k) = 0.1;
-	    ldt(k,s) += log(is(i,k,s));
-	    gmms(s).ldt(k) += log(is(i,k,s));
+	    gmms(s).m(i,k) = T(rand())/RAND_MAX - 0.5;
+	    const T init = 0.1;
+	    gmms(s).is(i,k) = init;
+	    gmms(s).ldt(k) += log(init);
 	  }
 	}
       }
@@ -135,10 +122,6 @@ public:
     }else{
 
       // Copy values of Gaussians
-      ldt = H.ldt;
-      c   = H.c;
-      m   = H.m;
-      is  = H.is;
       gmms = H.gmms;
 
       // Copy values of initial and transition probabilities
@@ -168,13 +151,11 @@ public:
 #pragma omp parallel for
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
-	  const T gc = log( c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
-	  const T unused = log( gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
+	  const T gc = log( gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
 	  for( int j=0; j<N; ++j){
 	    T qt = 0;
 	    for (int i=0; i<M; ++i) {
-	      T unused2 = gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
-	      qt += is(i,k,s) * sq(x(j,i) - m(i,k,s));
+	      qt += gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
 	    }
 	    q(j,k,s) = gc - 0.5*qt;
 	  }
@@ -276,12 +257,10 @@ public:
 	  T tc = 0;
 	  for( int i=0; i<N; ++i)
 	    tc += g(i,k,s);
-	  c(k,s) = tc;
 	  gmms(s).c(k) = tc;
 	}
       }
       for( int s=0; s<S; ++s) {
-	c.normalize(s);
 	gmms(s).c.normalize();
       }
       // ******* IS SCALING RIGHT?  I get c = [1 1 1 1 1 ...]
@@ -299,7 +278,6 @@ public:
 	      ms += t * x(j,i);
 	      sg += t;
 	    }
-	    m(i,k,s) = ms / sg;
 	    gmms(s).m(i,k) = ms / sg;
 	  }
 	}
@@ -308,21 +286,18 @@ public:
       // Covariances
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
-	  ldt(k,s) = 0;
 	  gmms(s).ldt(k) = 0;
 	  for( int i=0; i<M; ++i){
 	    T tu = 0;
 	    T sg = 0;
 	    for( int j=0; j<N; ++j){
 	      const T t = g(j,k,s);
-	      const T unused = t * sq(x(j,i)-gmms(s).m(i,k));
-	      tu += t * sq(x(j,i)-m(i,k,s));
+	      tu += t * sq(x(j,i)-gmms(s).m(i,k));
 	      sg += t;
 	    }
-	    is(i,k,s) = sg / tu;
-	    gmms(s).is(i,k) = sg / tu;
-	    ldt(k,s) += log(is(i,k,s));
-	    gmms(s).ldt(k) += log(is(i,k,s));
+	    const T init = sg / tu;
+	    gmms(s).is(i,k) = init;
+	    gmms(s).ldt(k) += log(init);
 	  }
 	}
       }
@@ -343,14 +318,11 @@ public:
 #pragma omp parallel for
     for( int s=0; s<S; ++s)
       for( int k=0; k<K; ++k){
-	const T gc = log(c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
-	const T unused = log(gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
+	const T gc = log(gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
 	for( int j=0; j<N; ++j){
 	  T qt = 0;
-	  for( int i=0; i<M; ++i) {
-	    const T unused = gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
-	    qt += is(i,k,s) * sq(x(j,i) - m(i,k,s));
-	  }
+	  for( int i=0; i<M; ++i)
+	    qt += gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
 	  logadd( lB(s,j), gc - 0.5*qt);
 	}
       }
@@ -538,13 +510,10 @@ public:
     f.write((char*)&lA[0], S*S*sizeof(T)); // log transition matrix
     f.write((char*)&K,       sizeof(int)); // number of gaussians
 
-    const int M = m.size() / (K*S);
-    const int Munused = gmms[0].m.size() / (K*S);
-    f.write((char*)&M,         sizeof(int)); // dimension
-    f.write((char*)&c[0],    K*S*sizeof(T)); // priors
-    f.write((char*)&m[0],  M*K*S*sizeof(T)); // means
-    f.write((char*)&is[0], M*K*S*sizeof(T)); // inverse variances
-    for (size_t s=0; s<S; ++s) {
+    const int M = gmms[0].m.size() / K;
+    std::cout << ( "DEBUG hmm_t::save('" + filename + "'): number of dimensions M is " + to_str(M) + ".\n");
+    f.write((char*)&M, sizeof(int)); // dimension
+    for (int s=0; s<S; ++s) {
       f.write((char*)&gmms[s] .c[0],   K*sizeof(T)); // priors
       f.write((char*)&gmms[s] .m[0], M*K*sizeof(T)); // means
       f.write((char*)&gmms[s].is[0], M*K*sizeof(T)); // inverse variances
@@ -582,53 +551,34 @@ public:
     f.read( (char*)&K, sizeof( int));
     if (K <= 0)
       throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of gaussians per state, " + to_str(K) + ".");
-
-    //std::cout << ( "DEBUG hmm_t::load('" + filename + "'): number of gaussians per state, K, is " + to_str(K) + ".\n");
+    //std::cout << ( "DEBUG hmm_t::load('" + filename + "'): number of gaussians per state K is " + to_str(K) + ".\n");
 
     // dimension
     int M;
     f.read( (char*)&M, sizeof( int));
     if (M <= 0)
       throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of dimensions " + to_str(M) + ".");
+    //std::cout << ( "DEBUG hmm_t::load('" + filename + "'): number of dimensions M is " + to_str(M) + ".\n");
 
     gmms.resize(S);
-    for( int s=0; s<S; ++s){
+    for (int s=0; s<S; ++s) {
       gmms(s).ldt.resize(  K);
       gmms(s)  .c.resize(  K);
       gmms(s)  .m.resize(M,K);
       gmms(s) .is.resize(M,K);
     }
-
-    // priors
-    c.resize( K, S);
-    f.read( (char*)&c[0], K*S*sizeof( T));
-
-    // means
-    m.resize( M, K, S);
-    f.read( (char*)&m[0], M*K*S*sizeof( T));
-
-    // inverse variances
-    is.resize( M, K, S);
-    f.read( (char*)&is[0], M*K*S*sizeof( T));
-
-    for (size_t s=0; s<S; ++s) {
+    for (int s=0; s<S; ++s) {
       f.read((char*)&gmms[s] .c[0],   K*sizeof(T)); // priors
       f.read((char*)&gmms[s] .m[0], M*K*sizeof(T)); // means
       f.read((char*)&gmms[s].is[0], M*K*sizeof(T)); // inverse variances
     }
-
     if (!f)
       throw runtime_error( "hmm_t::load('" + filename + "') failed.");
 
     // compute determinants
-    ldt.resize( K, S);
     for( int s=0; s<S; ++s) {
       for( int k=0; k<K; ++k) {
 	T t=0;
-	for( int i=0; i<M; ++i)
-	  t += log(is(i,k,s));
-	ldt(k,s) = t;
-	t=0;
 	for( int i=0; i<M; ++i)
 	  t += log(gmms(s).is(i,k));
 	gmms(s).ldt(k) = t;
@@ -648,17 +598,12 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
   H.S = h1.S + h2.S;
 
   // Allocate parameters.  Second .m is array h.m's first dimension.
-  if( h1.m.m != h2.m.m)
-    throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(h1.m.m) + " and " + to_str(h2.m.m) + ".");
-  const size_t M = h1.m.m;
+  if( h1.gmms(0).m.m != h2.gmms(0).m.m)
+    throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(h1.gmms(0).m.m) + " and " + to_str(h2.gmms(0).m.m) + ".");
+  const size_t M = h1.gmms(0).m.m;
 
   H.lPi.resize(         H.S);
   H.lA .resize(    H.S, H.S);
-
-  H.ldt.resize(    H.K, H.S);
-  H.c  .resize(    H.K, H.S);
-  H.m  .resize( M, H.K, H.S);
-  H.is .resize( M, H.K, H.S);
 
   H.gmms.resize(H.S);
   for( int s=0; s<H.S; ++s){
@@ -666,34 +611,6 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
     H.gmms(s).c  .resize(   H.K);
     H.gmms(s).m  .resize(M, H.K);
     H.gmms(s).is .resize(M, H.K);
-  }
-
-  // Copy data.
-  // In each array (c, ldt, m, is), s-wise, concatenate h1's and h2's versions into H's.
-  for (int s=0; s<h1.S; ++s) {
-    // source index: from 0 to h1.S
-    // dest index: same
-    for (int k=0; k<h1.K; ++k){
-      H.c  (k,s) = h1.c  (k,s);
-      H.ldt(k,s) = h1.ldt(k,s);
-      for( size_t i=0; i<M; ++i){
-	H.m (i,k,s) = h1.m (i,k,s);
-	H.is(i,k,s) = h1.is(i,k,s);
-      }
-    }
-  }
-  for (int s=0; s<h2.S; ++s) {
-    // source index: from 0 to h2.S
-    // dest index: source plus h1.S
-    const int sDst = h1.S+s;
-    for (int k=0; k<h2.K; ++k){
-      H.c  (k,sDst) = h2.c  (k,s);
-      H.ldt(k,sDst) = h2.ldt(k,s);
-      for (size_t i=0; i<M; ++i){
-	H.m (i,k,sDst) = h2.m (i,k,s);
-	H.is(i,k,sDst) = h2.is(i,k,s);
-      }
-    }
   }
 
   // Concatenate h1.gmms and h2.gmms into H.gmms.

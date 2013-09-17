@@ -7,7 +7,6 @@
 
 #include "intransp.h"
 #include "aufeat.h"
-#include "gmm.h"
 #include "hmm.h"
 #include "optparse.h"
 #include "wavfile.h"
@@ -397,7 +396,6 @@ public:
 		::combine( H, Al.front().G, Al.back().G, T(1.-trans), T(1.-trans));
 #else
 		// Pack all GMMs in a HMM
-		int M = -1;
 		int ai = 0;
 		for( typename std::list<AudioModel_t<T> >::iterator A=Al.begin(); A!=Al.end(); ++A,++ai){
 			// Make sure all models are relevant
@@ -410,29 +408,15 @@ public:
 			if(ai == 0) {
 				// First time through loop.
 				// Make room in HMM.
-				M = G.m.m;
 				H.S = Al.size();
 				H.K = G.K;
 				std::cout << "Making a " << H.S << "-state HMM with " << H.K << " gaussians per state." << std::endl;
 				H.lPi.resize( H.S);
 				H.lA.resize( H.S, H.S);
-
-				H.ldt.resize( H.K, H.S);
-				H.c.resize( H.K, H.S);
-				H.m.resize( M, H.K, H.S);
-				H.is.resize( M, H.K, H.S);
 				H.gmms.resize(H.S);
 			}
 
 			// Copy GMMs into HMM
-			for( int k = 0 ; k < G.K ; k++){
-				H.c(k,ai) = G.c(k);
-				H.ldt(k,ai) = G.ldt(k);
-				for( int i = 0 ; i < M ; i++){
-					H.m(i,k,ai) = G.m(i,k);
-					H.is(i,k,ai) = G.is(i,k);
-				}
-			}
 			H.gmms(ai)  .c = G  .c;
 			H.gmms(ai).ldt = G.ldt;
 			H.gmms(ai)  .m = G  .m;
@@ -455,11 +439,6 @@ public:
 			H.lPi(i) = log( 1./H.S);
 		
 		// Norm the priors
-		for( int i = 0 ; i < H.S ; i++){
-			const T s = H.c.sum(i);
-			for (int k=0; k<H.K; ++k)
-				H.c(k,i) -= log(s);
-		}
 		for (int i=0; i<H.S; ++i){
 			const T s = H.gmms(i).c.sum();
 			for (int k=0; k<H.K; ++k)
@@ -486,7 +465,7 @@ public:
 	}
 
 	// Classify a new input
-	void operator()( const array<T> &in, int sr)
+	void operator()( const array<T> &in, const int sr)
 	{
 		// Get the sound features
 		array<T> D;

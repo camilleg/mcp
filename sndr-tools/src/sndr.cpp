@@ -90,25 +90,23 @@ int main( int argc, const char **argv)
 			C.combine_models( modin, modout); // may throw exception
 		}
 
-		// Go through all files and perform classification
+		// For each file...
 		for( size_t i = 0 ; i < infile.size() ; ++i){
 			wavfile_t f( infile(i), std::ios::in);
 			array<real_t> x( f.frames);
 			f.read_mono( x);
+
+			// ...perform classification...
 			C( x, int( f.samplerate));
 
-			// Make output files with each sound class
-			if( dump.size()){
-				for( int j = 0 ; j < C.H.S ; ++j){
+			// ... and output .wav and .edl files.
+			if (dump!="") {
+				for (int j= 0; j<C.H.S; ++j)
 					C.make_snd( x, infile(i) + "." + dump + "." + to_str(j) + ".wav", j);
-				}
 			}
-
-			// Make EDL file
-			if( edl.size()){
-				for( int j = 0 ; j < C.H.S ; ++j){
+			if (edl != "") {
+				for (int j=0; j<C.H.S; ++j)
 					C.make_edl( infile(i) + "." + edl + "." + to_str(j) + ".edl", j);
-				}
 			}
 
 		}
