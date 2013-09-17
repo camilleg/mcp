@@ -97,7 +97,7 @@ public:
 		if (k > 1)
 			throw std::runtime_error( "array::operator()(i1,i2): missing third index");
 		if (i1>=m || i2>=n)
-			throw std::runtime_error( "array::operator()(i1,i2): index out of bounds");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + ", " + to_str(i2) + "): index overflows dimensions " + to_str(m) + ", " + to_str(n));
 #endif
 		return v[i1+i2*m];
 	}
@@ -108,7 +108,7 @@ public:
 		if (k > 1)
 			throw std::runtime_error( "array::operator()(i1,i2): missing third index");
 		if (i1>=m || i2>=n)
-			throw std::runtime_error( "array::operator()(i1,i2): index out of bounds");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + ", " + to_str(i2) + "): index overflows dimensions " + to_str(m) + ", " + to_str(n));
 #endif
 		return v[i1+i2*m];
 	}
@@ -122,7 +122,7 @@ public:
 		if (n > 1 || k > 1)
 			throw std::runtime_error( "array::operator()(i1): missing second or third index");
 		if (i1>=m)
-			throw std::runtime_error( "array::operator()(i1): first index " + to_str(i1) + " overflows dimension " + to_str(m));
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + ") overflows dimension " + to_str(m));
 #endif
 		return v[i1];
 	}
@@ -133,7 +133,7 @@ public:
 		if (n > 1 || k > 1)
 			throw std::runtime_error( "array::operator()(i1): missing second or third index");
 		if (i1>=m)
-			throw std::runtime_error( "array::operator()(i1): index out of bounds");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + ") overflows dimension " + to_str(m));
 #endif
 		return v[i1];
 	}
