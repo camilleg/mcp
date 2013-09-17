@@ -399,29 +399,32 @@ public:
 		// Pack all GMMs in a HMM
 		int M = -1;
 		int ai = 0;
-		for( typename std::list<AudioModel_t<T> >::iterator A = Al.begin() ; A != Al.end() ; ++A, ai++){
+		for( typename std::list<AudioModel_t<T> >::iterator A=Al.begin(); A!=Al.end(); ++A,++ai){
 			// Make sure all models are relevant
 //			if( (*A).F != F)
 //				throw std::runtime_error( "AudioClassifier_t<T>::combine(): Input models are not using the same features");
 
 			// Get the GMM inside the model
-			gmm_t<T> &G = A->G;
+			const gmm_t<T> &G = A->G;
 
-			// Make sure that we can fit all that stuff
-			if( ai == 0){
+			if(ai == 0) {
+				// First time through loop.
+				// Make room in HMM.
 				M = G.m.m;
 				H.S = Al.size();
 				H.K = G.K;
 				std::cout << "Making a " << H.S << "-state HMM with " << H.K << " gaussians per state." << std::endl;
 				H.lPi.resize( H.S);
 				H.lA.resize( H.S, H.S);
-				H.c.resize( H.K, H.S);
+
 				H.ldt.resize( H.K, H.S);
+				H.c.resize( H.K, H.S);
 				H.m.resize( M, H.K, H.S);
 				H.is.resize( M, H.K, H.S);
+				H.gmms.resize(H.S);
 			}
 
-			// Copy over the GMM to current state
+			// Copy GMMs into HMM
 			for( int k = 0 ; k < G.K ; k++){
 				H.c(k,ai) = G.c(k);
 				H.ldt(k,ai) = G.ldt(k);
@@ -430,6 +433,10 @@ public:
 					H.is(i,k,ai) = G.is(i,k);
 				}
 			}
+			H.gmms(ai)  .c = G  .c;
+			H.gmms(ai).ldt = G.ldt;
+			H.gmms(ai)  .m = G  .m;
+			H.gmms(ai) .is = G .is;
 
 			// Make the transition matrix row
 			if( trans > 0){
@@ -452,6 +459,11 @@ public:
 			const T s = H.c.sum(i);
 			for (int k=0; k<H.K; ++k)
 				H.c(k,i) -= log(s);
+		}
+		for (int i=0; i<H.S; ++i){
+			const T s = H.gmms(i).c.sum();
+			for (int k=0; k<H.K; ++k)
+				H.gmms(i).c(k) -= log(s);
 		}
 
 		// Bias the transitions

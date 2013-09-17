@@ -70,6 +70,8 @@ private:
     x = std::max(x, y) + log1p(exp(-z));
   }
 
+  T sq(const T x) const { return x*x; }
+
 public:
   // Learn data
   void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
@@ -111,8 +113,8 @@ public:
 	    gmms(s).m (i,k) = T( rand())/RAND_MAX - 0.5;
 	    is(i,k,s) = 0.1;
 	    gmms(s).is(i,k) = 0.1;
-	    ldt(k,s) += log( is(i,k,s));
-	    gmms(s).ldt(k) += log( is(i,k,s));
+	    ldt(k,s) += log(is(i,k,s));
+	    gmms(s).ldt(k) += log(is(i,k,s));
 	  }
 	}
       }
@@ -166,11 +168,14 @@ public:
 #pragma omp parallel for
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
-	  T gc = log( c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
+	  const T gc = log( c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
+	  const T unused = log( gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
 	  for( int j=0; j<N; ++j){
 	    T qt = 0;
-	    for( int i=0; i<M; ++i)
-	      qt += is(i,k,s) * (x(j,i) - m(i,k,s)) * (x(j,i) - m(i,k,s));
+	    for (int i=0; i<M; ++i) {
+	      T unused2 = gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
+	      qt += is(i,k,s) * sq(x(j,i) - m(i,k,s));
+	    }
 	    q(j,k,s) = gc - 0.5*qt;
 	  }
 	}
@@ -272,10 +277,13 @@ public:
 	  for( int i=0; i<N; ++i)
 	    tc += g(i,k,s);
 	  c(k,s) = tc;
+	  gmms(s).c(k) = tc;
 	}
       }
-      for( int s=0; s<S; ++s)
+      for( int s=0; s<S; ++s) {
 	c.normalize(s);
+	gmms(s).c.normalize();
+      }
       // ******* IS SCALING RIGHT?  I get c = [1 1 1 1 1 ...]
 
       // TODO: instead of updating Means and Covariances in here, call gmm_t<T>::maximize(g, x, learn);
@@ -307,13 +315,14 @@ public:
 	    T sg = 0;
 	    for( int j=0; j<N; ++j){
 	      const T t = g(j,k,s);
-	      tu += t * (x(j,i)-m(i,k,s)) * (x(j,i)-m(i,k,s));
+	      const T unused = t * sq(x(j,i)-gmms(s).m(i,k));
+	      tu += t * sq(x(j,i)-m(i,k,s));
 	      sg += t;
 	    }
 	    is(i,k,s) = sg / tu;
 	    gmms(s).is(i,k) = sg / tu;
-	    ldt(k,s) += log( is(i,k,s));
-	    gmms(s).ldt(k) += log( is(i,k,s));
+	    ldt(k,s) += log(is(i,k,s));
+	    gmms(s).ldt(k) += log(is(i,k,s));
 	  }
 	}
       }
@@ -321,7 +330,7 @@ public:
   }
 
   // Classify using a known HMM
-  void classify( const array<T> &x, array<int> &q, const array<T> &bias = array<T>(), int ist = -1)
+  void classify( const array<T> &x, array<int> &q, const array<T> &bias = array<T>(), const int ist = -1)
   {
     // Input dims of array are reversed
     const int M = x.n, N = x.m;
@@ -334,16 +343,13 @@ public:
 #pragma omp parallel for
     for( int s=0; s<S; ++s)
       for( int k=0; k<K; ++k){
-	const T use_l = ldt(k,s);
-	const T use_c = c(k,s);
-	const T unused = gmms(s).ldt(k);
-	const T unused2 = gmms(s).c(k);
-	const T gc = log(use_c) + 0.5*use_l - 0.5*M*log(2*M_PI);
+	const T gc = log(c(k,s)) + 0.5*ldt(k,s) - 0.5*M*log(2*M_PI);
+	const T unused = log(gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
 	for( int j=0; j<N; ++j){
 	  T qt = 0;
 	  for( int i=0; i<M; ++i) {
-	    qt += is(i,k,s) * (x(j,i) - m(i,k,s)) * (x(j,i) - m(i,k,s));
-	    (void)(gmms(s).is(i,k) * (x(j,i) - gmms(s).m(i,k)) * (x(j,i) - gmms(s).m(i,k)));
+	    const T unused = gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
+	    qt += is(i,k,s) * sq(x(j,i) - m(i,k,s));
 	  }
 	  logadd( lB(s,j), gc - 0.5*qt);
 	}
@@ -533,10 +539,16 @@ public:
     f.write((char*)&K,       sizeof(int)); // number of gaussians
 
     const int M = m.size() / (K*S);
+    const int Munused = gmms[0].m.size() / (K*S);
     f.write((char*)&M,         sizeof(int)); // dimension
     f.write((char*)&c[0],    K*S*sizeof(T)); // priors
     f.write((char*)&m[0],  M*K*S*sizeof(T)); // means
     f.write((char*)&is[0], M*K*S*sizeof(T)); // inverse variances
+    for (size_t s=0; s<S; ++s) {
+      f.write((char*)&gmms[s] .c[0],   K*sizeof(T)); // priors
+      f.write((char*)&gmms[s] .m[0], M*K*sizeof(T)); // means
+      f.write((char*)&gmms[s].is[0], M*K*sizeof(T)); // inverse variances
+    }
 
     if (!f)
       throw runtime_error( "hmm_t::save('" + filename + "') failed.");
@@ -577,14 +589,14 @@ public:
     int M;
     f.read( (char*)&M, sizeof( int));
     if (M <= 0)
-      throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of dimensions, from scalars " + to_str(m.size()) + ", " + to_str(K) + ", " + to_str(S) + ".");
+      throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of dimensions " + to_str(M) + ".");
 
     gmms.resize(S);
     for( int s=0; s<S; ++s){
-      gmms(s).ldt.resize(K);
-      gmms(s).c.resize(K);
-      gmms(s).m.resize(M,K);
-      gmms(s).is.resize(M,K);
+      gmms(s).ldt.resize(  K);
+      gmms(s)  .c.resize(  K);
+      gmms(s)  .m.resize(M,K);
+      gmms(s) .is.resize(M,K);
     }
 
     // priors
@@ -599,6 +611,12 @@ public:
     is.resize( M, K, S);
     f.read( (char*)&is[0], M*K*S*sizeof( T));
 
+    for (size_t s=0; s<S; ++s) {
+      f.read((char*)&gmms[s] .c[0],   K*sizeof(T)); // priors
+      f.read((char*)&gmms[s] .m[0], M*K*sizeof(T)); // means
+      f.read((char*)&gmms[s].is[0], M*K*sizeof(T)); // inverse variances
+    }
+
     if (!f)
       throw runtime_error( "hmm_t::load('" + filename + "') failed.");
 
@@ -606,9 +624,14 @@ public:
     ldt.resize( K, S);
     for( int s=0; s<S; ++s) {
       for( int k=0; k<K; ++k) {
-	ldt(k,s) = 0;
+	T t=0;
 	for( int i=0; i<M; ++i)
-	  ldt(k,s) += log( is(i,k,s));
+	  t += log(is(i,k,s));
+	ldt(k,s) = t;
+	t=0;
+	for( int i=0; i<M; ++i)
+	  t += log(gmms(s).is(i,k));
+	gmms(s).ldt(k) = t;
       }
     }
   }
