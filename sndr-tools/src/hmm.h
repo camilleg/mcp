@@ -639,15 +639,18 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
 
   H.gmms.resize(H.S);
   for( int s=0; s<H.S; ++s){
-    H.gmms(s).ldt.resize(H.K);
-    H.gmms(s).c.resize(H.K);
-    H.gmms(s).m.resize(M,H.K);
-    H.gmms(s).is.resize(M,H.K);
+    H.gmms(s).ldt.resize(   H.K);
+    H.gmms(s).c  .resize(   H.K);
+    H.gmms(s).m  .resize(M, H.K);
+    H.gmms(s).is .resize(M, H.K);
   }
 
   // Copy data.
-  for( int s=0; s<h1.S; ++s) {
-    for( int k=0; k<h1.K; ++k){
+  // In each array (c, ldt, m, is), s-wise, concatenate h1's and h2's versions into H's.
+  for (int s=0; s<h1.S; ++s) {
+    // source index: from 0 to h1.S
+    // dest index: same
+    for (int k=0; k<h1.K; ++k){
       H.c  (k,s) = h1.c  (k,s);
       H.ldt(k,s) = h1.ldt(k,s);
       for( size_t i=0; i<M; ++i){
@@ -656,17 +659,40 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
       }
     }
   }
-  for( int s=0; s<h2.S; ++s) {
-    for( int k=0; k<h2.K; ++k){
-      H.c  (k,h1.S+s) = h2.c  (k,s);
-      H.ldt(k,h1.S+s) = h2.ldt(k,s);
-      for( size_t i=0; i<M; ++i){
-	H.m (i,k,h1.S+s) = h2.m (i,k,s);
-	H.is(i,k,h1.S+s) = h2.is(i,k,s);
+  for (int s=0; s<h2.S; ++s) {
+    // source index: from 0 to h2.S
+    // dest index: source plus h1.S
+    const int sDst = h1.S+s;
+    for (int k=0; k<h2.K; ++k){
+      H.c  (k,sDst) = h2.c  (k,s);
+      H.ldt(k,sDst) = h2.ldt(k,s);
+      for (size_t i=0; i<M; ++i){
+	H.m (i,k,sDst) = h2.m (i,k,s);
+	H.is(i,k,sDst) = h2.is(i,k,s);
       }
     }
   }
-  // TODO: copy from h1.gmms and h2.gmms to H.gmms.
+
+  // Concatenate h1.gmms and h2.gmms into H.gmms.
+  // M and K are the same for both src's, and dst.  Only S differs.
+  for( int s=0; s<h1.S; ++s){
+    const gmm_t<T>& src = h1.gmms[s];
+          gmm_t<T>& dst =  H.gmms[s];
+    // Arrays m and is are 2D not 1D, but M and K are the same for
+    // src and dst, so don't bother copying elementwise in a nested loop.
+    std::copy(src.c  .v, src.c  .v + src.c  .size(), dst.c  .v);
+    std::copy(src.ldt.v, src.ldt.v + src.ldt.size(), dst.ldt.v);
+    std::copy(src.m  .v, src.m  .v + src.m  .size(), dst.m  .v);
+    std::copy(src.is .v, src.is .v + src.is .size(), dst.is .v);
+  }
+  for( int s=0; s<h2.S; ++s){
+    const gmm_t<T>& src = h2.gmms[s];
+          gmm_t<T>& dst =  H.gmms[s + h1.S];
+    std::copy(src.c  .v, src.c  .v + src.c  .size(), dst.c  .v);
+    std::copy(src.ldt.v, src.ldt.v + src.ldt.size(), dst.ldt.v);
+    std::copy(src.m  .v, src.m  .v + src.m  .size(), dst.m  .v);
+    std::copy(src.is .v, src.is .v + src.is .size(), dst.is .v);
+  }
 
   // Make transition matrix and initial probabilities.
   for( size_t i=0; i < H.lA.size(); ++i)
@@ -681,14 +707,14 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T
     for( int j=0; j < h2.S; ++j)
       H.lA(h1.S+i,h1.S+j) = h2.lA(i,j);
   }
-  H.lA(h1.S        - 1, h1.S) = log( p1);
-  H.lA(h1.S + h2.S - 1,    0) = log( p2);
+  H.lA(h1.S        - 1, h1.S) = log(p1);
+  H.lA(h1.S + h2.S - 1,    0) = log(p2);
 
   // Normalize them.
   H.lPi.normalize_log();
 
-  for( int i=0; i<h1.S; ++i) H.lA(h1.S     -1,      i) += log1p(-p1);
-  for( int i=0; i<h2.S; ++i) H.lA(h1.S+h2.S-1, h1.S+i) += log1p(-p2);
+  for (int s=0; s<h1.S; ++s) H.lA(h1.S-1     , s     ) += log1p(-p1);
+  for (int s=0; s<h2.S; ++s) H.lA(h1.S-1+h2.S, s+h1.S) += log1p(-p2);
 }
 
 #endif
