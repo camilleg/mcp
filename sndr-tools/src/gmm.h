@@ -150,7 +150,7 @@ public:
       // Massage posterior into shape and compute likelihood
       lk(it) = 0;
       for( int j = 0 ; j < N ; j++){
-	T mx = p(j);
+	T mx = p(j,0);
 	for( int i = 1 ; i < K ; i++)
 	  mx = std::max( mx, p(j,i));
 	for( int i = 0 ; i < K ; i++)
@@ -158,7 +158,7 @@ public:
 	lk(it) += mx;
       }
       for( int j = 0 ; j < N ; j++){
-	T t = p(j);
+	T t = p(j,0);
 	for( int i = 1 ; i < K ; i++)
 	  logadd(t, p(j,i));
 	for( int i = 0 ; i < K ; i++)
