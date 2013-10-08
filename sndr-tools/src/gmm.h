@@ -35,6 +35,8 @@ public:
   // Learn data "x"
   void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
   {
+    if (K <= 0)
+      throw std::runtime_error( "gmm_t::train() uninitialized.");
     // Remember sizes
     const int M = x.n;
     const int N = x.m;
@@ -184,10 +186,12 @@ public:
   // Update arg p and members c, m, is, ldt.
   void maximize(array<T>& p, const array<T> &x, const array<int>& learn)
   {
+    if (K <= 0)
+      throw std::runtime_error( "gmm_t::maximize() uninitialized.");
     const int M = x.n;
     const int N = x.m;
     if (K != int(learn.size()) || K != int(p.n) || N != int(p.m))
-      throw std::runtime_error( "gmm_t::maximize(): Incompatible sizes");
+      throw std::runtime_error( "gmm_t::maximize(): Incompatible sizes " + to_str(K) + " == " + to_str(learn.size()) + " == " + to_str(p.n) + "; " + to_str(N) + " == " + to_str(p.m) + ".");
 
 #pragma omp parallel for
     for(int k=0; k<K; ++k){
@@ -226,6 +230,8 @@ private:
   // Comparing several GMMs' likelihoods()s is like an HMM's classify().
   void likelihoods( const array<T> &x, array<T> &p)
   {
+    if (K <= 0)
+      throw std::runtime_error( "gmm_t::likelihoods() uninitialized.");
     // Check sizes and allocate output
     const int M = x.n;
     const int N = x.m;
@@ -250,6 +256,8 @@ private:
 public:
   void save( const std::string& filename)
   {
+    if (K <= 0)
+      throw std::runtime_error( "gmm_t::save() uninitialized.");
     using namespace std;
     if (filename.empty())
       throw runtime_error( "gmm_t::save(\"\") failed.");
