@@ -5,13 +5,13 @@
 #ifndef __HMM_H__
 #define __HMM_H__
 
-#include <cmath>
 #include <fstream>
 #include <algorithm>
 #include <iostream>
 
 #include "gmm.h"
 #include "array.h"
+#include "logadd.h"
 
 // Hidden Markov Model class
 
@@ -30,42 +30,6 @@ public:
   // Constructor
   hmm_t( int s = 0, int k = 1) : S(s), K(k) {}
 
-private:
-  // Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
-  inline void logadd( T& x, const T& y)
-  {
-    if (y == -INFINITY) {
-      // x remains unchanged, trivially.
-      return;
-    }
-    if (x == -INFINITY && isnan(y)) {
-      // y might be -HUGE_VAL, from log(0.0).
-      return;
-    }
-
-    if (isnan(x) || isnan(y)) {
-#ifdef __CHECK
-      // gdb shows that isnan typically means -INFINITY plus a constant, i.e., -INFINITY.
-      // throw std::runtime_error( "hmm_t::logadd(" + to_str(x) + ", " + to_str(y) + ")");
-#endif
-      return;
-    }
-
-    const T z = fabs(x-y);
-    if (z > 30.0) {
-      x = std::max(x, y);
-      return;
-    }
-    if (x == y) {		// Is this special case worth testing for?
-      x += log(2.0);
-      return;
-    }
-    x = std::max(x, y) + log1p(exp(-z));
-  }
-
-  T sq(const T x) const { return x*x; }
-
-public:
   // Learn data
   void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
   {
@@ -333,6 +297,8 @@ public:
   }
 
 private:
+  T sq(const T x) const { return x*x; }
+
   // Viterbi decoding
   void viterbi( const array<T> &lB, array<int> &q, const int ist = -1)
   {

@@ -5,7 +5,6 @@
 #ifndef __GMM_H__
 #define __GMM_H__
 
-#include <cmath>
 #include <fstream>
 #include <algorithm>
 #include <iostream>
@@ -14,6 +13,7 @@
 // Has effect only with -march=native, -mfpmath, -msse, etc; AND -On for n>0.
 
 #include "array.h"
+#include "logadd.h"
 
 // Gaussian mixture model class
 template <class T>
@@ -32,35 +32,6 @@ public:
   // Constructor with default values
   gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
 
-private:
-  // Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
-  inline void logadd( T& x, const T& y)
-  {
-    if (y == -INFINITY) {
-      // x remains unchanged, trivially.
-      return;
-    }
-    if (x == -INFINITY && isnan(y)) {
-      // y might be -HUGE_VAL, from log(0.0).
-      return;
-    }
-
-    if (isnan(x) || isnan(y))
-    throw std::runtime_error( "hmm_t::logadd(" + to_str(x) + ", " + to_str(y) + ")");
-
-    const T z = fabs(x-y);
-    if (z > 30.0) {
-      x = std::max(x, y);
-      return;
-    }
-    if (x == y) {		// Is this special case worth testing for?
-      x += log(2.0);
-      return;
-    }
-    x = std::max(x, y) + log1p(exp(-z));
-  }
-
-public:
   // Learn data
   void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
   {
