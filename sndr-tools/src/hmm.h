@@ -51,6 +51,7 @@ public:
     for( int s=0; s<S; ++s){
       // M and N come from arg x.  K comes from constructor, or from load().
       gmm_t<T>& gmm = gmms(s);
+      gmm.K = K; // probably 1
       gmm.ldt.resize(K);
       gmm.c.resize(K);
       gmm.m.resize(M,K);
@@ -218,11 +219,10 @@ public:
 	  lA(s,j) = xi(s,j) - ls;
       }
 
-      array<int> dummy(M);
-      for (int _=0; _<M; ++_)
-	dummy[_] = 1;
-
       for( int s=0; s<S; ++s){
+	array<int> dummy(more(s).g.n);
+	for (size_t _=0; _<more(s).g.n; ++_)
+	  dummy[_] = 1;
 	gmms(s).maximize(more(s).g, x, dummy);
       }
     }
