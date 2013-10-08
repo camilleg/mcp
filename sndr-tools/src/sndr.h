@@ -57,7 +57,63 @@ public:
     F.report();
   }
 
-  // Check options similarity
+  // Sneakily append feature data to another file.
+  void save(const std::string& filename) {
+    std::ofstream ff(filename.c_str(), std::ios::binary | std::ios::app);
+    ff.seekp(0, std::ios::end);
+    ff.write("feat", 4*sizeof(char));
+    ff.write((char*)&b, sizeof(int));
+    ff.write((char*)&fb, sizeof(int));
+    ff.write((char*)&hp, sizeof(int));
+    ff.write((char*)&av, sizeof(int));
+    ff.write((char*)&tsz, sizeof(T));
+    ff.write((char*)&flo, sizeof(T));
+    ff.write((char*)&fhi, sizeof(T));
+    ff.write((char*)&thr, sizeof(T));
+    ff.write((char*)&srate, sizeof(T));
+//  // Member array<T> bias was moved to class AudioClassifier_t.
+//  const int bs = bias.size();
+//  ff.write((char*)&bs, sizeof(int));
+//  ff.write((char*)bias.v, bias.size()*sizeof(T));
+    ff.write(fopts.c_str(), fopts.size()*sizeof(char));
+  }
+
+  // Search for sneakily appended feature data.
+  void load(const std::string& filename) {
+    char opt[32];
+    char *opp = opt;
+    std::ifstream ff(filename.c_str(), std::ios::binary);
+    do {
+      ff.read(opt, 4*sizeof(char));
+      ff.seekg(-3, std::ios::cur);
+    } while (!ff.eof() && !(opt[0]=='f' && opt[1]=='e' && opt[2]=='a' && opt[3]=='t'));
+    opt[4] = '\0';
+    if (!strcmp(opt, "feat")){
+      std::cout << "Found feature parameters appended to file " << filename << "." << std::endl;
+      ff.seekg(3, std::ios::cur);
+      ff.read((char*)&b, sizeof(int));
+      ff.read((char*)&fb, sizeof(int));
+      ff.read((char*)&hp, sizeof(int));
+      ff.read((char*)&av, sizeof(int));
+      ff.read((char*)&tsz, sizeof(T));
+      ff.read((char*)&flo, sizeof(T));
+      ff.read((char*)&fhi, sizeof(T));
+      ff.read((char*)&thr, sizeof(T));
+      ff.read((char*)&srate, sizeof(T));
+//    // Member array<T> bias was moved to class AudioClassifier_t.
+//    int tbs;
+//    ff.read((char*)&tbs, sizeof(int));
+//    if (tbs > 0){
+//	bias.resize(tbs);
+//	ff.read((char*)bias.v, bias.size()*sizeof(T));
+//    }
+      while (!ff.eof()) ff.read(opp++, sizeof(char));
+      *--opp = '\0';
+      fopts = opt;
+    }
+  }
+
+  // Check options match
   bool operator==(const AudioFeatureExtractor_t<T> &A) const
   {
     return b == A.b && fb == A.fb && hp == A.hp && av == A.av &&
@@ -71,7 +127,7 @@ public:
   {
     using namespace std;
     // Init the feature structure according to the new sample rate
-    if(sr != srate){
+    if (sr != srate){
       sz = pow(2., int(log2(tsz*sr)));
       F.setup(sr, sz, round(3*log(sr)), b, flo, fhi, fopts);
 //    F.report();
@@ -182,11 +238,11 @@ public:
   {
     // Count our data
     int fs = 0;
-    for(typename std::list<array<T> >::iterator i = D.begin(); i != D.end(); ++i)
+    for (typename std::list<array<T> >::iterator i = D.begin(); i != D.end(); ++i)
       fs += (*i).m;
 
 //  // Nothing to do
-//  if(fs == 0)
+//  if (fs == 0)
 //    throw std::runtime_error("AudioFeatures_t<T>::consolidate(): empty list");
 
     // Consolidate features
@@ -194,8 +250,8 @@ public:
     const int del = F.fopts.find('d') != std::string::npos;
     C.resize(fs-del*5*D.size(), D.front().n);
     while (D.size()) {
-      for(unsigned int k = del*5; k < D.front().m; ++k, ++ck)
-	for(unsigned int j = 0; j < D.front().n; ++j)
+      for (unsigned int k = del*5; k < D.front().m; ++k, ++ck)
+	for (unsigned int j = 0; j < D.front().n; ++j)
 	  C(ck,j) = D.front()(k,j);
       D.pop_front();
       S.pop_front();
@@ -230,7 +286,7 @@ public:
 
   // Train model G from data A
   void operator()(AudioFeatures_t<T> &A, const int it) {
-    if(A.F != F)
+    if (A.F != F)
       throw std::runtime_error("AudioModel_t trained feature space mismatch.");
     A.consolidate();
     G.train(A.C, it);
@@ -244,7 +300,7 @@ public:
   void operator()(AudioFeatures_t<T> &A, const int it, gmm_t<T> Gb)
 #endif
   {
-    if(A.F != F)
+    if (A.F != F)
       throw std::runtime_error("AudioModel_t model-trained feature space mismatch.");
     A.consolidate();
     G.train(A.C, it, Gb);
@@ -256,24 +312,8 @@ public:
       std::cout << "error: AudioModel_t::save(\"\");" << std::endl;
       return false;
     }
-
     G.save(f);
-
-    // Sneakily append the feature data.
-    std::ofstream ff(f.c_str(), std::ios::binary | std::ios::app);
-    ff.seekp(0, std::ios::end);
-    ff.write("feat", 4*sizeof(char));
-    ff.write((char*)&F.b, sizeof(int));
-    ff.write((char*)&F.fb, sizeof(int));
-    ff.write((char*)&F.hp, sizeof(int));
-    ff.write((char*)&F.av, sizeof(int));
-    ff.write((char*)&F.tsz, sizeof(T));
-    ff.write((char*)&F.flo, sizeof(T));
-    ff.write((char*)&F.fhi, sizeof(T));
-    ff.write((char*)&F.thr, sizeof(T));
-    ff.write((char*)&F.srate, sizeof(T));
-    ff.write(F.fopts.c_str(), F.fopts.size()*sizeof(char));
-
+    F.save(f); // Append feature parameters.
     std::cout << "Saved AudioModel_t model " << f << "." << std::endl;
     return true;
   }
@@ -283,43 +323,12 @@ public:
       std::cout << "error: AudioModel_t::load(\"\");" << std::endl;
       return false;
     }
-
     G.load(f);
-    std::cout << "Loaded model " << f << "." << std::endl;
+    F.load(f); // Load any appended feature parameters.
 
-    // Load any appended feature parameters.
-    char opt[32];
-    char *opp = opt;
-    std::ifstream ff(f.c_str(), std::ios::binary);
-    do {
-      ff.read(opt, 4*sizeof(char));
-      if (!ff) {
-	std::cout << "error: read only " << ff.gcount() << " of 4 chars from file '" << f << "'." << std::endl;
-	break;
-      }
-      ff.seekg(-3, std::ios::cur);
-    } while (!ff.eof() && !(opt[0]=='f' && opt[1]=='e' && opt[2]=='a' && opt[3]=='t'));
-    opt[4] = '\0';
-    if (!strcmp(opt, "feat")) {
-      std::cout << "Found feature parameters in AudioModel_t file " << f << "." << std::endl;
-      ff.seekg(3, std::ios::cur);
-      ff.read((char*)&F.b, sizeof(int));
-      ff.read((char*)&F.fb, sizeof(int));
-      ff.read((char*)&F.hp, sizeof(int));
-      ff.read((char*)&F.av, sizeof(int));
-      ff.read((char*)&F.tsz, sizeof(T));
-      ff.read((char*)&F.flo, sizeof(T));
-      ff.read((char*)&F.fhi, sizeof(T));
-      ff.read((char*)&F.thr, sizeof(T));
-      ff.read((char*)&F.srate, sizeof(T));
-      while(!ff.eof())
-	ff.read(opp++, sizeof(char));
-      *--opp = '\0';
-      F.fopts = opt;
-    }
-
-    // Ensure feature class initialization
+    // Ensure feature class initialization.
     F.srate = 0;
+    std::cout << "Loaded model " << f << "." << std::endl;
     return true;
   }
 };
@@ -337,7 +346,7 @@ public:
 
   array<int> o; // Classification output
   hmm_t<T> H;   // The master HMM
-  AudioFeatureExtractor_t<T> &F; // Feature extractor reference
+  AudioFeatureExtractor_t<T> &F;
 
   // Initialize
   AudioClassifier_t(AudioFeatureExtractor_t<T> &_F) : m(0), mw(1.), trans(-60), F(_F) {}
@@ -372,7 +381,7 @@ public:
     int ai = 0;
     for (typename std::list<AudioModel_t<T> >::iterator A=Al.begin(); A!=Al.end(); ++A,++ai) {
 //    // Make sure all models are relevant
-//    if((*A).F != F)
+//    if ((*A).F != F)
 //      throw std::runtime_error("AudioClassifier_t<T>::combine(): Input models are not using the same features");
 
       // Get the model's GMM
@@ -396,11 +405,11 @@ public:
       H.gmms(ai) .is = G .is;
 
       // Make the transition matrix row
-      if(trans > 0){
-	for(int i=0; i<H.S; ++i) H.lA(ai,i) = log((1.-trans)/(H.S-1));
+      if (trans > 0){
+	for (int i=0; i<H.S; ++i) H.lA(ai,i) = log((1.-trans)/(H.S-1));
 	H.lA(ai,ai) = log(trans);
       }else{
-	for(int i=0; i<H.S; ++i) H.lA(ai,i) = trans;
+	for (int i=0; i<H.S; ++i) H.lA(ai,i) = trans;
 	H.lA(ai,ai) = log(0.9999); // **** improper value, should be ok further down when I normalize lA
       }			
   }
@@ -524,74 +533,24 @@ public:
     std::cout << "Dumped " << N << " of " << o.size() << " frames to " << f << "." << std::endl;
   }
 
-  // Load preexisting HMM model (potentially with feature info)
-  void load(const std::string &modin) {
-    // Load the HMM.  Throw exception on failure.
-    H.load(modin);
-
-    // Load any appended feature parameters.
-    char opt[32];
-    char *opp = opt;
-    std::ifstream ff(modin.c_str(), std::ios::binary);
-    do {
-      ff.read(opt, 4*sizeof(char));
-      ff.seekg(-3, std::ios::cur);
-    } while(!ff.eof() && !(opt[0]=='f' && opt[1]=='e' && opt[2]=='a' && opt[3]=='t'));
-    opt[4] = '\0';
-    if (!strcmp(opt, "feat")){
-      std::cout << "HMM file " << modin << " has feature parameters." << std::endl;
-      ff.seekg(3, std::ios::cur);
-      ff.read((char*)&F.b, sizeof(int));
-      ff.read((char*)&F.fb, sizeof(int));
-      ff.read((char*)&F.hp, sizeof(int));
-      ff.read((char*)&F.av, sizeof(int));
-      ff.read((char*)&F.tsz, sizeof(T));
-      ff.read((char*)&F.flo, sizeof(T));
-      ff.read((char*)&F.fhi, sizeof(T));
-      ff.read((char*)&F.thr, sizeof(T));
-      ff.read((char*)&F.srate, sizeof(T));
-#if 0
-      int tbs;
-      ff.read((char*)&tbs, sizeof(int));
-      if(tbs > 0){
-	bias.resize(tbs);
-	ff.read((char*)bias.v, bias.size()*sizeof(T));
-      }
-#endif
-      while (!ff.eof()) ff.read(opp++, sizeof(char));
-      *--opp = '\0';
-      F.fopts = opt;
-    }
+  // Load HMM model
+  void load(const std::string& filename) {
+    // Load the HMM, and any appended feature parameters.  Throw exception on failure.
+    H.load(filename);
+    F.load(filename);
 
     // Ensure feature class initialization.
     F.srate = 0;
   }
 
   // Combine multiple sound model files (and feature info) into an HMM model file.
-  void combine_models(const array<std::string> &modin, const std::string &modout) {
+  void combine_models(const array<std::string>& filenames_src, const std::string& filename_dst) {
     // Load GMM models and combine them into one HMM
-    combine(modin);
+    combine(filenames_src);
 
-    // Save the HMM.  Throw exception on failure.
-    H.save(modout);
-
-    // Sneakily append the feature data
-    std::ofstream ff(modout.c_str(), std::ios::binary | std::ios::app);
-    ff.seekp(0, std::ios::end);
-    ff.write("feat", 4*sizeof(char));
-    ff.write((char*)&F.b, sizeof(int));
-    ff.write((char*)&F.fb, sizeof(int));
-    ff.write((char*)&F.hp, sizeof(int));
-    ff.write((char*)&F.av, sizeof(int));
-    ff.write((char*)&F.tsz, sizeof(T));
-    ff.write((char*)&F.flo, sizeof(T));
-    ff.write((char*)&F.fhi, sizeof(T));
-    ff.write((char*)&F.thr, sizeof(T));
-    ff.write((char*)&F.srate, sizeof(T));
-//  int bs = F.bias.size();
-//  ff.write((char*)&F.bs, sizeof(int));
-//  ff.write((char*)F.bias.v, F.bias.size()*sizeof(T));
-    ff.write(F.fopts.c_str(), F.fopts.size()*sizeof(char));
+    // Save the HMM.  Append feature parameters.  Throw exception on failure.
+    H.save(filename_dst);
+    F.save(filename_dst);
   }
 };
 
