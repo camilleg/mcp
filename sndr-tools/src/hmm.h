@@ -22,10 +22,9 @@ public:
   int K; // Gaussians per state
   array<T> lPi, lA; // Model parameters
 
-  // Gaussian mixture data
-  array<gmm_t<T> > gmms;
+  array<gmm_t<T> > gmms; // Gaussian mixture data
 private:
-  array<T> la, lb, xi, txi; // Various parameters for Baum-Welch iterations
+  array<T> la, lb, xi, txi; // Parameters for Baum-Welch iterations
 
 public:
   // Constructor
@@ -48,10 +47,8 @@ private:
 #ifdef __CHECK
       // gdb shows that isnan typically means -INFINITY plus a constant, i.e., -INFINITY.
       // throw std::runtime_error( "hmm_t::logadd(" + to_str(x) + ", " + to_str(y) + ")");
-      return;
-#else
-      return;
 #endif
+      return;
     }
 
     const T z = fabs(x-y);
@@ -89,10 +86,8 @@ public:
     lPi.resize( S);
     lA.resize( S, S);
 
-    // Initial values
     if( H.S == 0){
-
-      // Initial values for Gaussians
+      // Initial values of Gaussians
       for( int s=0; s<S; ++s){
 	for( int k=0; k<K; ++k){
 	  gmms(s).ldt(k) = 0;
@@ -105,8 +100,7 @@ public:
 	  }
 	}
       }
-
-      // Initial values for initial and transition probabilities
+      // Initial values of initial and transition probabilities
       for( int s=0; s<S; ++s)
 	lPi(s) = log( 1./S);
       for( int i=0; i<S; ++i)
@@ -120,7 +114,6 @@ public:
 	  lA(i,j) -= ls;
       }
     }else{
-
       // Copy values of Gaussians
       gmms = H.gmms;
 
@@ -588,7 +581,7 @@ public:
 
 };
 
-// Combine two HMMs in a loop.
+// Combine two HMMs.
 template <class T>
 void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, T p1 = 0.5, T p2 = 0.5)
 {
