@@ -21,21 +21,22 @@ public:
   int S; // States
   int K; // Gaussians per state
   array<T> lPi, lA; // Model parameters
-
   array<gmm_t<T> > gmms; // Gaussian mixture data
 
-  class otherStuff {
-  public:
-    //;;;; more into here.  Anything indexed by s.
-    array<T> g;
-  };
-  array<otherStuff> more; // related stuff for each element of gmms
 private:
-  array<T> la, lb, xi, txi; // Parameters for Baum-Welch iterations
+  // For an individual gmm.
+  class gmmStorage_t {
+  public:
+    array<T> g;
+    array<T> la, lb; // Alpha and beta parameters for Baum-Welch iterations.
+    // lPi would be tricky, because of load() and save() and combine().
+  };
+  array<gmmStorage_t> gmmStore; // related stuff for each element of gmms
+  array<T> xi, txi; // SxS parameters for Baum-Welch iterations
 
 public:
   // Constructor
-  hmm_t( const int s=0, int k=1): S(s), K(k) {}
+  hmm_t(const int s=0, int k=1): S(s), K(k) {}
 
   // Learn data
   void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
@@ -47,32 +48,30 @@ public:
 
     // Setup state model parameters
     gmms.resize(S);
-    more.resize(S);
-    for( int s=0; s<S; ++s){
+    for (int s=0; s<S; ++s) {
       // M and N come from arg x.  K comes from constructor, or from load().
       gmm_t<T>& gmm = gmms(s);
-      gmm.K = K; // probably 1
       gmm.ldt.resize(K);
       gmm.c.resize(K);
       gmm.m.resize(M,K);
       gmm.is.resize(M,K);
-
-      more(s).g.resize(N,K);
     }
-    lPi.resize( S);
-    lA.resize( S, S);
+    lPi.resize(S);
+    lA.resize(S, S);
 
-    if( H.S == 0){
+    if (H.S == 0) {
       // Initial values of Gaussians
-      for( int s=0; s<S; ++s){
-	for( int k=0; k<K; ++k){
-	  gmms(s).ldt(k) = 0;
-	  gmms(s).c(k) = 1./K;
-	  for( int i=0; i<M; ++i){
-	    gmms(s).m(i,k) = T(rand())/RAND_MAX - 0.5;
+      for (int s=0; s<S; ++s) {
+	gmm_t<T>& gmm = gmms(s);
+	gmm.K = K; // probably 1
+	for (int k=0; k<K; ++k) {
+	  gmm.ldt(k) = 0;
+	  gmm.c(k) = 1./K;
+	  for (int i=0; i<M; ++i) {
+	    gmm.m(i,k) = T(rand())/RAND_MAX - 0.5;
 	    const T init = 0.1;
-	    gmms(s).is(i,k) = init;
-	    gmms(s).ldt(k) += log(init);
+	    gmm.is(i,k) = init;
+	    gmm.ldt(k) += log(init);
 	  }
 	}
       }
@@ -105,10 +104,19 @@ public:
     array<T> q( N, K, S);
     array<T> lp( S, N);
     array<T> lk( iters);
-    la .resize( S, N);
-    lb .resize( S, N);
-    xi .resize( S, S);
-    txi.resize( S, S);
+    gmmStore.resize(S);
+    for( int s=0; s<S; ++s) {
+      gmmStorage_t& store = gmmStore(s); // related stuff for each element of gmms
+      store.g.resize(N,K);
+      store.la.resize(N);
+      store.lb.resize(N);
+    }
+    xi .resize(S, S);
+    txi.resize(S, S);
+
+    array<int> dummy(K);
+    for (int i=0; i<K; ++i)
+      dummy[i] = 1;
 
     // Iterate expectation-maximization
     for( int it=0; it<iters; ++it){
@@ -140,66 +148,72 @@ public:
 	}
 
       // Get alphas
-      for( int i=0; i<S; ++i)
-	la(i,0) = lPi(i) + lp(i,0);
-      for( int t=0; t<N-1; ++t)
-	for( int j=0; j<S; ++j){
-	  T ls = log( 0.0);
-	  for( int i=0; i<S; ++i)
-	    logadd( ls, la(i,t) + lA(i,j));
-	  la(j,t+1) = ls + lp(j,t+1);
+      for (int s=0; s<S; ++s)
+	gmmStore(s).la(0) = lPi(s) + lp(s,0);
+      for (int t=0; t<N-1; ++t) {
+	for (int j=0; j<S; ++j) {
+	  T ls = log(0.0);
+	  for (int s=0; s<S; ++s)
+	    logadd( ls, gmmStore(s).la(t) + lA(s,j));
+	  gmmStore(j).la(t+1) = ls + lp(j,t+1);
 	}
+      }
 
       // Get betas
-      for( int i=0; i<S; ++i)
-	lb(i,N-1) = log( 0.0);
-      lb(S-1,N-1) = 0;
-      for( int t = N-2; t >= 0; --t)
-	for( int i=0; i<S; ++i){
-	  T ls = log( 0.0);
-	  for( int j=0; j<S; ++j)
-	    logadd( ls, lb(j,t+1) + lA(i,j) + lp(j,t+1));
-	  lb(i,t) = ls;
+      for (int s=0; s<S-1; ++s)
+	gmmStore(s).lb(N-1) = log(0.0);
+      gmmStore(S-1).lb(N-1) = 0;
+      for (int t = N-2; t >= 0; --t) {
+	for (int i=0; i<S; ++i) {
+	  T ls = log(0.0);
+	  for (int j=0; j<S; ++j)
+	    logadd(ls, gmmStore(j).lb(t+1) + lA(i,j) + lp(j,t+1));
+	  gmmStore(i).lb(t) = ls;
 	}
+      }
 
       // Get Xi
       for( int i=0; i<S*S; ++i)
 	xi[i] = log(0.0);
-      for( int t=0; t<N-1; ++t){
+      for (int t=0; t<N-1; ++t) {
 	T ls = log(0.0);
-	for( int i=0; i<S; ++i)
-	  for( int j=0; j<S; ++j){
-	    txi(i,j) = lA(i,j) + la(i,t) + lp(j,t+1) + lb(j,t+1);
-	    logadd( ls, txi(i,j));
+	for (int s=0; s<S; ++s) {
+	  for (int j=0; j<S; ++j) {
+	    txi(s,j) = lA(s,j) + gmmStore(s).la(t) + lp(j,t+1) + gmmStore(j).lb(t+1);
+	    logadd(ls, txi(s,j));
 	  }
+	}
 	for( int i=0; i<S*S; ++i)
-	  logadd( xi[i], txi[i] - ls);
+	  logadd(xi[i], txi[i] - ls);
       }
 
       // Get gamma
-      for( int j=0; j<N; ++j){
-	T ls = log( 0.0);
-	for( int s=0; s<S; ++s)
-	  logadd( ls, la(s,j)+lb(s,j));
-	for( int s=0; s<S; ++s){
-	  T tg = la(s,j) + lb(s,j) - lp(s,j) - ls;
+      array<T> la_lb(S);
+      for( int j=0; j<N; ++j) {
+	T ls = log(0.0);
+	for (int s=0; s<S; ++s) {
+	  la_lb[s] = gmmStore(s).la(j) + gmmStore(s).lb(j);
+	  logadd( ls, la_lb[s]);
+	}
+	for (int s=0; s<S; ++s){
+	  const T tg = la_lb[s] - lp(s,j) - ls;
 	  for( int k=0; k<K; ++k) {
-	    more(s).g(j,k) = tg + q(j,k,s);
+	    gmmStore(s).g(j,k) = tg + q(j,k,s);
 	  }
 	}
       }
 
       // Get overall likelihood
-      lk(it) = log( 0.0);
-      for( int i=0; i<S; ++i)
-	logadd( lk(it), la(i,N-1));
+      lk(it) = log(0.0);
+      for (int s=0; s<S; ++s)
+	logadd(lk(it), gmmStore(s).la(N-1));
       if( ((it+1)%5==0) || it == iters-1)
 	std::cout << "HMM iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 
       // Exit log domain
       for (int s=0; s<S; ++s)
 	for( int i=0; i<N*K; ++i)
-	  more(s).g[i] = exp(more(s).g[i]);
+	  gmmStore(s).g[i] = exp(gmmStore(s).g[i]);
 
 
       // *** Maximization step ***
@@ -208,7 +222,7 @@ public:
 	// Initial probabilities
 	T tp = log(0.0);
 	for( int i=0; i<K; ++i)
-	  logadd(tp, log(more(s).g(0,i)));
+	  logadd(tp, log(gmmStore(s).g(0,i)));
 	lPi(s) = tp;
 
 	// Transition matrix
@@ -219,12 +233,8 @@ public:
 	  lA(s,j) = xi(s,j) - ls;
       }
 
-      for( int s=0; s<S; ++s){
-	array<int> dummy(more(s).g.n);
-	for (size_t _=0; _<more(s).g.n; ++_)
-	  dummy[_] = 1;
-	gmms(s).maximize(more(s).g, x, dummy);
-      }
+      for (int s=0; s<S; ++s)
+	gmms(s).maximize(gmmStore(s).g, x, dummy);
     }
   }
 
