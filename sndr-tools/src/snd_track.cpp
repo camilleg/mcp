@@ -171,7 +171,7 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 
 	// Normalize the priors
 	for (int s=0; s<H.S; ++s)
-		H.gmms(i).c.normalize();
+		H.gmms(s).c.normalize();
 	cout << "Packed models in an HMM." << endl;
 	return 0;
 #endif

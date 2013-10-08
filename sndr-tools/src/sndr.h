@@ -415,7 +415,7 @@ public:
   }
 
     // Initial probabilities
-    for (int i=0; i<H.S; ++i) H.lPi(i) = log(1./H.S);
+    for (int i=0; i<H.S; ++i) H.lPi(i) = log(1.0/H.S);
     
     // Norm the priors
     for (int i=0; i<H.S; ++i) {
@@ -424,9 +424,10 @@ public:
     }
 
     // Bias the transitions
-    if (int(r.size()) == sq(H.S)) {
-	    std::cout << "Biasing" << std::endl;
-	    for (int i=0; i<sq(H.S); i++) H.lA(i) -= r(i);
+    const int c = H.S * H.S;
+    if (int(r.size()) == c) {
+      std::cout << "Biasing" << std::endl;
+      for (int i=0; i<c; ++i) H.lA(i) -= r(i);
     }
 
     // Re-normalize the transition matrix
