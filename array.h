@@ -176,9 +176,14 @@ public:
 				throw std::runtime_error( "array::resize() failed to allocate " + to_str(m) + " x " + to_str(n) + " x " + to_str(k) + " elements\n" );
 			}
 		}
+#if 0
 #ifdef __CHECK
 		for (size_t i=0; i<size(); ++i)
-			v[i] = std::numeric_limits<T>::signaling_NaN();
+			v[i] = static_cast<T>(std::numeric_limits<T>::signaling_NaN());
+			// This fails to compile if float isn't compatible with T,
+			// e.g. T is std::string or has a pile of member variables.
+			// ( __builtin_types_compatible_p() works only with C, not C++.)
+#endif
 #endif
 	}
 
