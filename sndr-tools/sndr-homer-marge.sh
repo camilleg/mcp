@@ -8,7 +8,8 @@ bin=bin
 snd=../simpsons
 
 # Parameters
-train="-t .25 -H 8 -T .4 -l 45 -h 4500 -K 7 -e 20"	# -e 70 is better but slower
+train="-t .25 -H 1 -T .4 -l 45 -h 4500 -K 3 -e 3"	# for gdb
+train="-t .25 -H 8 -T .4 -l 45 -h 4500 -K 7 -e 20"	# -e 70 is better but slower.
 classify="-p .9999 -f 2"
 
 echo "Learn model for Marge."
