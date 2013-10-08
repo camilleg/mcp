@@ -148,55 +148,51 @@ public:
     F.extract_offline(f, e, s, sz/hp);
 #endif
 
-    // Mark low-energy frames if threshold is non-zero
-    if (thr) {
-      // Get peak volume
-      T pk = 0;
-      for (size_t i=0; i<e.size(); ++i) pk = std::max(pk, e(i));
+    if (thr > 0.0) {
+      // Threshold is nonzero, so remove low-energy frames.
+      const T peakVolume = thr * e.max();
       
-      // Find passable frames
+      // Mark non-quiet frames
       p.resize(e.size());
-      int pc = 0;
+      size_t cPeak = 0;
       for (size_t i=0; i<e.size(); ++i) {
-	p(i) = e(i) >= thr*pk;
-	pc += p(i);
+	p(i) = e(i) >= peakVolume;
+	if (p(i)) ++cPeak;
       }
 
-      // Remove silent frames if proper flag is set
       if (thrm) {
-	// Back up the data
-	array<T> f2(f);
+	// Remove quiet frames.
+	// TODO: replace this copying with an in-place copy.  Might be faster.
+	const array<T> f2(f);
 
 	// Keep only the loud parts
-	f.resize(F.o, pc);
+	f.resize(F.o, cPeak);
 	for (size_t i=0,j=0; i<e.size(); ++i) {
 	  if (p(i)) {
 	    for (int k=0; k<F.o; ++k) f(k,j) = f2(k,i);
 	    ++j;
 	  }
 	}
-	std::cout << "Volume trimmed from " << f2.n << " frames to " << f.n << " frames" << std::endl;
+	std::cout << "Volume trimmed from " << f2.n << " to " << f.n << " frames." << std::endl;
       }
 }
     
     if (av > 1) {
-      // Back up the data
-      array<T> f2(f.m, f.n);
-      for (size_t i=0; i<f.size(); ++i) f2(i) = f(i);
-      
       // Feature averaging
+      const array<T> f2(f);
       f.resize(F.o, f.n/av);
       for (size_t i=0; i<f.m; ++i)
 	for (size_t j=0; j<f.n; ++j) {
-	  f(i,j) = 0;
+	  T t = 0;
 	  for (int k=0; k<av; ++k)
 	    if (j+k < f2.n)
-	      f(i,j) += f2(i,j+k);
-	  f(i,j) /= av;
+	      t += f2(i, j+k);
+	  f(i,j) = t/av;
 	}
     }
 
     // Transpose in place to make the cache happy during training
+    // (How much does that matter, when f is entirely copied a moment before?)
     intp(&f[0], f.m, f.n);
     f.k=f.m; f.m=f.n; f.n=f.k; f.k=1;
 
