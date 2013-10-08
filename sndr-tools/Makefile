@@ -10,8 +10,8 @@ else
 	CXXFLAGS += -march=native -fopenmp -pedantic -Wall -D_GNU_SOURCE
 	# _GNU_SOURCE defines NaN
 endif
-# CXXFLAGS += -g -O0
-# CXXFLAGS += -D__CHECK
+#CXXFLAGS += -g -O0
+#CXXFLAGS += -D__CHECK
 LDFLAGS = -lfftw3
 
 # Use float precision (not recommended)
