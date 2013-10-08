@@ -188,6 +188,7 @@ public:
     const int N = x.m;
     if (K != int(learn.size()) || K != int(p.n) || N != int(p.m))
       throw std::runtime_error( "gmm_t::maximize(): Incompatible sizes");
+
 #pragma omp parallel for
     for(int k=0; k<K; ++k){
       // Weights
@@ -209,15 +210,18 @@ public:
 	for (int i=0; i<M; ++i){
 	  T ss = dg;
 	  for (int j=0; j<N; ++j)
-	    ss += (x(j,i)-m(i,k)) * (x(j,i)-m(i,k)) * p(j,k);
-	  is(i,k) = ps/ss;
-	  ldt(k) += log( is(i,k));
+	    ss += sq(x(j,i)-m(i,k)) * p(j,k);
+	  const T init = ps/ss;
+	  is(i,k) = init;
+	  ldt(k) += log(init);
 	}
       }
     }
   }
 
 private:
+  T sq(const T x) const { return x*x; }
+
   // Evaluate log likelihoods of data x into p.
   // Comparing several GMMs' likelihoods()s is like an HMM's classify().
   void likelihoods( const array<T> &x, array<T> &p)

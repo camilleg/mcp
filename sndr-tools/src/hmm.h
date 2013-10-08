@@ -23,29 +23,40 @@ public:
   array<T> lPi, lA; // Model parameters
 
   array<gmm_t<T> > gmms; // Gaussian mixture data
+
+  class otherStuff {
+  public:
+    //;;;; more into here.  Anything indexed by s.
+    array<T> g;
+  };
+  array<otherStuff> more; // related stuff for each element of gmms
 private:
   array<T> la, lb, xi, txi; // Parameters for Baum-Welch iterations
 
 public:
   // Constructor
-  hmm_t( int s = 0, int k = 1) : S(s), K(k) {}
+  hmm_t( const int s=0, int k=1): S(s), K(k) {}
 
   // Learn data
   void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
   {
-    // Input dims of array are reversed
+    // Reverse x's dims.
     const int M = x.n;
     const int N = x.m;
     std::cout << "HMM training " << M << " x " << N << std::endl;
 
     // Setup state model parameters
     gmms.resize(S);
+    more.resize(S);
     for( int s=0; s<S; ++s){
       // M and N come from arg x.  K comes from constructor, or from load().
-      gmms(s).ldt.resize(K);
-      gmms(s).c.resize(K);
-      gmms(s).m.resize(M,K);
-      gmms(s).is.resize(M,K);
+      gmm_t<T>& gmm = gmms(s);
+      gmm.ldt.resize(K);
+      gmm.c.resize(K);
+      gmm.m.resize(M,K);
+      gmm.is.resize(M,K);
+
+      more(s).g.resize(N,K);
     }
     lPi.resize( S);
     lA.resize( S, S);
@@ -91,7 +102,6 @@ public:
 
     // Allocate buffers
     array<T> q( N, K, S);
-    array<T> g( N, K, S);
     array<T> lp( S, N);
     array<T> lk( iters);
     la .resize( S, N);
@@ -172,8 +182,9 @@ public:
 	  logadd( ls, la(s,j)+lb(s,j));
 	for( int s=0; s<S; ++s){
 	  T tg = la(s,j) + lb(s,j) - lp(s,j) - ls;
-	  for( int k=0; k<K; ++k)
-	    g(j,k,s) = tg + q(j,k,s);
+	  for( int k=0; k<K; ++k) {
+	    more(s).g(j,k) = tg + q(j,k,s);
+	  }
 	}
       }
 
@@ -185,8 +196,9 @@ public:
 	std::cout << "HMM iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 
       // Exit log domain
-      for( int i=0; i<N*K*S; ++i)
-	g[i] = exp(g[i]);
+      for (int s=0; s<S; ++s)
+	for( int i=0; i<N*K; ++i)
+	  more(s).g[i] = exp(more(s).g[i]);
 
 
       // *** Maximization step ***
@@ -195,7 +207,7 @@ public:
 	// Initial probabilities
 	T tp = log(0.0);
 	for( int i=0; i<K; ++i)
-	  logadd(tp, log(g(0,i,s)));
+	  logadd(tp, log(more(s).g(0,i)));
 	lPi(s) = tp;
 
 	// Transition matrix
@@ -204,61 +216,47 @@ public:
 	  logadd(ls, xi(s,j));
 	for( int j=0; j<S; ++j)
 	  lA(s,j) = xi(s,j) - ls;
-
-	gmm_t<T>& gmm = gmms(s);
-
-	// Priors
-	for( int k=0; k<K; ++k){
-	  T tc = 0;
-	  for( int i=0; i<N; ++i)
-	    tc += g(i,k,s);
-	  gmm.c(k) = tc;
-	}
-
-	gmm.c.normalize();
       }
-      // ******* IS SCALING RIGHT?  I get c = [1 1 1 1 1 ...]
 
 #undef use_gmm_maximize
 #ifdef use_gmm_maximize
       // TODO: instead of updating Means and Covariances in here, call gmm_t<T>::maximize(g, x, dummy);
-      array<int> dummy(g.n);
-      for (size_t _=0; _<dummy.size(); ++_)
-	dummy[_] = true;
+      array<int> dummy(M);
+      for (int _=0; _<M; ++_)
+	dummy[_] = 1;
 #endif
 
       for( int s=0; s<S; ++s){
 	gmm_t<T>& gmm = gmms(s);
 #ifdef use_gmm_maximize
-	gmm.maximize(g, x, dummy);
+	gmm.maximize(more(s).g, x, dummy);
 #else
-	// Means
+	array<T>& p = more(s).g;
+	// Priors aka weights
 	for( int k=0; k<K; ++k){
-	  //const T ps = g.sum(k); // same as sg?
+	  gmm.c(k) = p.sum(k);
+	}
+	gmm.c.normalize(); // ******* IS SCALING RIGHT? I get c = [1 1 1 1 1 ...]
+
+	for( int k=0; k<K; ++k){
+	  // Means
+	  const T ps = p.sum(k);
 	  for( int i=0; i<M; ++i){
 	    T ms = 0;
-	    T sg = 0;
 	    for( int j=0; j<N; ++j){
-	      const T t = g(j,k,s);
-	      sg += t;
-	      ms += t * x(j,i);
+	      ms += x(j,i) * p(j,k);
 	    }
-	    gmm.m(i,k) = ms / sg;
+	    gmm.m(i,k) = ms/ps;
 	  }
-	}
 
-	// Covariances
-	for( int k=0; k<K; ++k){
+	  // (Co)variances
 	  gmm.ldt(k) = 0;
-	  for( int i=0; i<M; ++i){
-	    T tu = 0;
-	    T sg = 0;
-	    for( int j=0; j<N; ++j){
-	      const T t = g(j,k,s);
-	      tu += t * sq(x(j,i)-gmms(s).m(i,k));
-	      sg += t;
+	  for (int i=0; i<M; ++i) {
+	    T ss = 0;
+	    for (int j=0; j<N; ++j) {
+	      ss += sq(x(j,i)-gmm.m(i,k)) * p(j,k);
 	    }
-	    const T init = sg / tu;
+	    const T init = ps/ss;
 	    gmm.is(i,k) = init;
 	    gmm.ldt(k) += log(init);
 	  }
