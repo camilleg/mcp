@@ -218,50 +218,12 @@ public:
 	  lA(s,j) = xi(s,j) - ls;
       }
 
-#undef use_gmm_maximize
-#ifdef use_gmm_maximize
-      // TODO: instead of updating Means and Covariances in here, call gmm_t<T>::maximize(g, x, dummy);
       array<int> dummy(M);
       for (int _=0; _<M; ++_)
 	dummy[_] = 1;
-#endif
 
       for( int s=0; s<S; ++s){
-	gmm_t<T>& gmm = gmms(s);
-#ifdef use_gmm_maximize
-	gmm.maximize(more(s).g, x, dummy);
-#else
-	array<T>& p = more(s).g;
-	// Priors aka weights
-	for( int k=0; k<K; ++k){
-	  gmm.c(k) = p.sum(k);
-	}
-	gmm.c.normalize(); // ******* IS SCALING RIGHT? I get c = [1 1 1 1 1 ...]
-
-	for( int k=0; k<K; ++k){
-	  // Means
-	  const T ps = p.sum(k);
-	  for( int i=0; i<M; ++i){
-	    T ms = 0;
-	    for( int j=0; j<N; ++j){
-	      ms += x(j,i) * p(j,k);
-	    }
-	    gmm.m(i,k) = ms/ps;
-	  }
-
-	  // (Co)variances
-	  gmm.ldt(k) = 0;
-	  for (int i=0; i<M; ++i) {
-	    T ss = 0;
-	    for (int j=0; j<N; ++j) {
-	      ss += sq(x(j,i)-gmm.m(i,k)) * p(j,k);
-	    }
-	    const T init = ps/ss;
-	    gmm.is(i,k) = init;
-	    gmm.ldt(k) += log(init);
-	  }
-	}
-#endif
+	gmms(s).maximize(more(s).g, x, dummy);
       }
     }
   }
@@ -278,16 +240,18 @@ public:
       lB[i] = log(0.0); // Init all lB(s,j)'s.
 
 #pragma omp parallel for
-    for( int s=0; s<S; ++s)
+    for( int s=0; s<S; ++s) {
+      const gmm_t<T>& gmm = gmms(s);
       for( int k=0; k<K; ++k){
-	const T gc = log(gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
+	const T gc = log(gmm.c(k)) + 0.5*gmm.ldt(k) - 0.5*M*log(2*M_PI);
 	for( int j=0; j<N; ++j){
 	  T qt = 0;
 	  for( int i=0; i<M; ++i)
-	    qt += gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
+	    qt += gmm.is(i,k) * sq(x(j,i) - gmm.m(i,k));
 	  logadd( lB(s,j), gc - 0.5*qt);
 	}
       }
+    }
 
     // Add the bias to first state
     if (!bias.empty()) {
