@@ -191,59 +191,65 @@ public:
 
       // *** Maximization step ***
 
-      // Initial probabilities
-      for( int s=0; s<S; ++s){
-	T tp = log( 0.0);
+      for (int s=0; s<S; ++s) {
+	// Initial probabilities
+	T tp = log(0.0);
 	for( int i=0; i<K; ++i)
-	  logadd( tp, log( g(0,i,s)));
+	  logadd(tp, log(g(0,i,s)));
 	lPi(s) = tp;
-      }
 
-      // Transition matrix
-      for( int i=0; i<S; ++i){
-	T ls = log( 0.0);
+	// Transition matrix
+	T ls = log(0.0);
 	for( int j=0; j<S; ++j)
-	  logadd( ls, xi(i,j));
+	  logadd(ls, xi(s,j));
 	for( int j=0; j<S; ++j)
-	  lA(i,j) = xi(i,j) - ls;
-      }
+	  lA(s,j) = xi(s,j) - ls;
 
-      // Priors
-      for( int s=0; s<S; ++s){
+	gmm_t<T>& gmm = gmms(s);
+
+	// Priors
 	for( int k=0; k<K; ++k){
 	  T tc = 0;
 	  for( int i=0; i<N; ++i)
 	    tc += g(i,k,s);
-	  gmms(s).c(k) = tc;
+	  gmm.c(k) = tc;
 	}
-      }
-      for( int s=0; s<S; ++s) {
-	gmms(s).c.normalize();
+
+	gmm.c.normalize();
       }
       // ******* IS SCALING RIGHT?  I get c = [1 1 1 1 1 ...]
 
-      // TODO: instead of updating Means and Covariances in here, call gmm_t<T>::maximize(g, x, learn);
+#undef use_gmm_maximize
+#ifdef use_gmm_maximize
+      // TODO: instead of updating Means and Covariances in here, call gmm_t<T>::maximize(g, x, dummy);
+      array<int> dummy(g.n);
+      for (size_t _=0; _<dummy.size(); ++_)
+	dummy[_] = true;
+#endif
 
-      // Means
       for( int s=0; s<S; ++s){
+	gmm_t<T>& gmm = gmms(s);
+#ifdef use_gmm_maximize
+	gmm.maximize(g, x, dummy);
+#else
+	// Means
 	for( int k=0; k<K; ++k){
+	  //const T ps = g.sum(k); // same as sg?
 	  for( int i=0; i<M; ++i){
 	    T ms = 0;
 	    T sg = 0;
 	    for( int j=0; j<N; ++j){
 	      const T t = g(j,k,s);
-	      ms += t * x(j,i);
 	      sg += t;
+	      ms += t * x(j,i);
 	    }
-	    gmms(s).m(i,k) = ms / sg;
+	    gmm.m(i,k) = ms / sg;
 	  }
 	}
-      }
 
-      // Covariances
-      for( int s=0; s<S; ++s){
+	// Covariances
 	for( int k=0; k<K; ++k){
-	  gmms(s).ldt(k) = 0;
+	  gmm.ldt(k) = 0;
 	  for( int i=0; i<M; ++i){
 	    T tu = 0;
 	    T sg = 0;
@@ -253,10 +259,11 @@ public:
 	      sg += t;
 	    }
 	    const T init = sg / tu;
-	    gmms(s).is(i,k) = init;
-	    gmms(s).ldt(k) += log(init);
+	    gmm.is(i,k) = init;
+	    gmm.ldt(k) += log(init);
 	  }
 	}
+#endif
       }
     }
   }

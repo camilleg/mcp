@@ -32,7 +32,7 @@ public:
   // Constructor with default values
   gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
 
-  // Learn data
+  // Learn data "x"
   void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
   {
     // Remember sizes
