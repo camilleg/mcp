@@ -125,7 +125,6 @@ public:
   // Extract sound features
   void operator()(const array<T> &s, int sr, array<T> &f, array<int> &p, bool thrm=false)
   {
-    using namespace std;
     // Init the feature structure according to the new sample rate
     if (sr != srate){
       sz = pow(2., int(log2(tsz*sr)));
@@ -153,7 +152,7 @@ public:
     if (thr) {
       // Get peak volume
       T pk = 0;
-      for (size_t i=0; i<e.size(); ++i) pk = max(pk, e(i));
+      for (size_t i=0; i<e.size(); ++i) pk = std::max(pk, e(i));
       
       // Find passable frames
       p.resize(e.size());
@@ -204,7 +203,7 @@ public:
 #if 0
     // Dump to debugging file
     {
-      ofstream df("/tmp/sndr-debugging-dump.dat", ios::out);
+      std::ofstream df("/tmp/sndr-debugging-dump.dat", std::ios::binary | std::ios::out);
       df.write((char*)&f.m, sizeof(int));
       df.write((char*)&f.n, sizeof(int));
       df.write((char*)f.v, sizeof(T)*f.m*f.n);
@@ -256,7 +255,7 @@ public:
       D.pop_front();
       S.pop_front();
     }
-    std::cout << "Overall feature size " << C.m << " x " << C.n << std::endl;
+    std::cout << "Overall consolidated feature size is " << C.m << " x " << C.n << "." << std::endl;
   }
 
   // Clear buffers
@@ -272,19 +271,19 @@ public:
 template <class T>
 class AudioModel_t {
 public:
-
 #ifdef __HMM_TRAIN
-  hmm_t<T> G; // HMM model for the sound class
+  #define baseModel_t hmm_t
 #else
-  gmm_t<T> G; // GMM model for the sound class
+  #define baseModel_t gmm_t
 #endif
+  baseModel_t<T> G;              // HMM or GMM model of sound class
   AudioFeatureExtractor_t<T> &F; // Feature extractor reference, used as a test
 
   // Constructors
   AudioModel_t(AudioFeatureExtractor_t<T> &_F): F(_F) {}
   AudioModel_t(AudioFeatureExtractor_t<T> &_F, const int k): G(k), F(_F) {}
 
-  // Train model G from data A
+  // Train model G from data A.
   void operator()(AudioFeatures_t<T> &A, const int it) {
     if (A.F != F)
       throw std::runtime_error("AudioModel_t trained feature space mismatch.");
@@ -293,17 +292,13 @@ public:
     std::cout << "Trained model in " << it << " iterations." << std::endl;
   }
   
-  // Train model G from data A and an initial model
-#ifdef __HMM_TRAIN
-  void operator()(AudioFeatures_t<T> &A, const int it, hmm_t<T> Gb)
-#else
-  void operator()(AudioFeatures_t<T> &A, const int it, gmm_t<T> Gb)
-#endif
+  // Train model G from data A and an initial model.
+  void operator()(AudioFeatures_t<T> &A, const int it, baseModel_t<T> Ginitial)
   {
     if (A.F != F)
       throw std::runtime_error("AudioModel_t model-trained feature space mismatch.");
     A.consolidate();
-    G.train(A.C, it, Gb);
+    G.train(A.C, it, Ginitial);
     std::cout << "Updated model in " << it << " iterations." << std::endl;
   }
   
@@ -326,8 +321,7 @@ public:
     G.load(f);
     F.load(f); // Load any appended feature parameters.
 
-    // Ensure feature class initialization.
-    F.srate = 0;
+    F.srate = 0; // Ensure feature class initialization.
     std::cout << "Loaded model " << f << "." << std::endl;
     return true;
   }

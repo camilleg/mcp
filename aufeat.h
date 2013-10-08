@@ -12,10 +12,6 @@
 #include <cfloat>
 #include <fstream>
 
-//
-// Audio features class
-//
-
 // Bark scale frequencies
 const double Bark_freq[] = {
 	50, 150, 250, 350, 450, 570, 700, 840, 1000, 
