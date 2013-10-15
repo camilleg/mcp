@@ -16,7 +16,6 @@ template <class T> inline void logadd( T& x, const T& y)
     // y might be -HUGE_VAL, from log(0.0).
     return;
   }
-
   if (isnan(x) || isnan(y))
     return;
 

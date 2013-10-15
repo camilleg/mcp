@@ -49,31 +49,16 @@ public:
     gmms.resize(S);
     for (int s=0; s<S; ++s) {
       // M and N come from arg x.  K comes from constructor, or from load().
-      gmm_t<T>& gmm = gmms(s);
-      gmm.ldt.resize(K);
-      gmm.c.resize(K);
-      gmm.m.resize(M,K);
-      gmm.is.resize(M,K);
+      gmms(s).init(M,K);
     }
     lPi.resize(S);
     lA.resize(S, S);
 
     if (H.S == 0) {
       // Initial values of Gaussians
-      for (int s=0; s<S; ++s) {
-	gmm_t<T>& gmm = gmms(s);
-	gmm.K = K; // probably 1
-	for (int k=0; k<K; ++k) {
-	  gmm.ldt(k) = 0;
-	  gmm.c(k) = 1./K;
-	  for (int i=0; i<M; ++i) {
-	    gmm.m(i,k) = T(rand())/RAND_MAX - 0.5;
-	    const T init = 0.1;
-	    gmm.is(i,k) = init;
-	    gmm.ldt(k) += log(init);
-	  }
-	}
-      }
+      for (int s=0; s<S; ++s)
+	gmms(s).init2();
+
       // Initial values of initial and transition probabilities
       for( int s=0; s<S; ++s)
 	lPi(s) = log( 1./S);
@@ -90,6 +75,9 @@ public:
     }else{
       // Copy values of Gaussians
       gmms = H.gmms;
+      for (int s=0; s<S; ++s)
+	if (gmms(s).K <= 0)
+	  throw std::runtime_error( "hmm_t::train(): uninitialized gmm.");
 
       // Copy values of initial and transition probabilities
       for( int i=0; i<S; ++i){
@@ -124,18 +112,10 @@ public:
 
       // Get likelihoods from each gaussian from each state
 #pragma omp parallel for
-      for( int s=0; s<S; ++s){
-	for( int k=0; k<K; ++k){
-	  const T gc = log( gmms(s).c(k)) + 0.5*gmms(s).ldt(k) - 0.5*M*log(2*M_PI);
-	  for( int j=0; j<N; ++j){
-	    T qt = 0;
-	    for (int i=0; i<M; ++i) {
-	      qt += gmms(s).is(i,k) * sq(x(j,i) - gmms(s).m(i,k));
-	    }
-	    q(j,k,s) = gc - 0.5*qt;
-	  }
-	}
-      }
+      for( int s=0; s<S; ++s)
+	for( int k=0; k<K; ++k)
+	  for( int j=0; j<N; ++j)
+	    q(j,k,s) = gmms(s).placeholderForFunctionName(x,j,k);
 
       // Compute overall state likelihoods
       for( int s=0; s<S; ++s)
@@ -249,18 +229,10 @@ public:
       lB[i] = log(0.0); // Init all lB(s,j)'s.
 
 #pragma omp parallel for
-    for( int s=0; s<S; ++s) {
-      const gmm_t<T>& gmm = gmms(s);
-      for( int k=0; k<K; ++k){
-	const T gc = log(gmm.c(k)) + 0.5*gmm.ldt(k) - 0.5*M*log(2*M_PI);
-	for( int j=0; j<N; ++j){
-	  T qt = 0;
-	  for( int i=0; i<M; ++i)
-	    qt += gmm.is(i,k) * sq(x(j,i) - gmm.m(i,k));
-	  logadd( lB(s,j), gc - 0.5*qt);
-	}
-      }
-    }
+    for( int s=0; s<S; ++s)
+      for( int k=0; k<K; ++k)
+	for( int j=0; j<N; ++j)
+	  logadd(lB(s,j), gmms(s).placeholderForFunctionName(x,j,k,K,M));
 
     // Add the bias to first state
     if (!bias.empty()) {

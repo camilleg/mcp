@@ -20,6 +20,7 @@ class gmm_t {
 public:
   // (Don't hide these publics behind accessors until the code stabilizes.)
   int K;        // Gaussians
+  int M;        // dimension of input data
   array<T> ldt;	// covariances aka determinants
   array<T> c;	// priors
   array<T> m;	// means
@@ -28,8 +29,33 @@ private:
   T dg;  // Diagonal load
 
 public:
-  // Constructor with default values
-  gmm_t( int k = 0, T d = __FLT_EPSILON__) : K( k), dg( d) {}
+  // Constructor
+  gmm_t(int k=0/*uninitialized*/, T d=__FLT_EPSILON__) : K(k), m(0), dg(d) {}
+
+  void init(const int mArg, const int kArg)
+  {
+    M = mArg;
+    K = kArg;
+    ldt.resize(  K);
+    c  .resize(  K);
+    m  .resize(M,K);
+    is .resize(M,K);
+  }
+  void init2()
+  {
+    if (K <= 0)
+      throw std::runtime_error( "gmm_t::init2() uninitialized.");
+    const T startingValue = 0.1;
+    for (int k=0; k<K; ++k) {
+      ldt(k) = 0;
+      c(k) = 1.0/K;
+      for (int i=0; i<M; ++i) {
+	m(i,k) = T(rand())/RAND_MAX - 0.5;
+	is(i,k) = startingValue;
+	ldt(k) += log(startingValue); // TODO: just assign ldt(k) directly, M * log(startingValue).
+      }
+    }
+  }
 
   // Learn data "x"
   void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
@@ -46,10 +72,7 @@ public:
 	throw std::runtime_error( "gmm_t::train() got infinity or NaN.");
 
     // Setup
-    ldt.resize( K);
-    c.resize( K);
-    m.resize( M, K);
-    is.resize( M, K);
+    init(M, K);
 
     array<T> p( N, K);
     array<T> lk( iters);
@@ -212,6 +235,23 @@ public:
     }
   }
 
+  T placeholderForFunctionName(const array<T>& x, const int j, const int k, const int kArg=0, const int mArg=0)
+  {
+    if (K<=0 && kArg>0) {
+      // This is why this function can't be const.
+      K = kArg;
+      M = mArg;
+    }
+    if (K <= 0)
+      throw std::runtime_error( "gmm_t::placeholderForFunctionName(): uninitialized.");
+
+    const T gc = log(c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI); // bug: move this out of the j-loops that call this
+    T qt = 0;
+    for (int i=0; i<M; ++i)
+      qt += is(i,k) * sq(x(j,i) - m(i,k));
+    return gc - 0.5*qt;
+  }
+
 private:
   T sq(const T x) const { return x*x; }
 
@@ -221,7 +261,7 @@ private:
   void likelihoods( const array<T> &x, array<T> &p)
   {
     if (K <= 0)
-      throw std::runtime_error( "gmm_t::likelihoods() uninitialized.");
+      throw std::runtime_error( "gmm_t::likelihoods(): uninitialized.");
     const int M = x.n;
     const int N = x.m;
     if (M != int(m.m))
@@ -230,12 +270,8 @@ private:
       throw std::runtime_error( "gmm_t::likelihoods(): result array expected " + to_str(N) +" x "+ to_str(K) + ", not " + to_str(p.m) +" x "+ to_str(p.n) + ".");
 
     for (int k=0; k<K; ++k) {
-      const T gc = log(c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI);
       for (int j=0; j<N; ++j) {
-	T qt = 0;
-	for (int i=0; i<M; ++i)
-	  qt += is(i,k) * sq(x(j,i) - m(i,k));
-	p(j,k) = gc - 0.5*qt;
+	p(j,k) = placeholderForFunctionName(x,j,k);
       }
     }
   }
