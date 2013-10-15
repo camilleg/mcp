@@ -323,8 +323,6 @@ public:
 
 			// Copy result to output
 			y.resize( o);
-			for( size_t i = 0 ; i < y.size() ; ++i)
-				y[i] = 0;
 			for( size_t i = 0 ; i < buf.m ; ++i)
 				y[i] = buf(i,cf);
 
@@ -338,18 +336,17 @@ public:
 				y[i] = t2[i];
 		}
 
-		// Return frame energy
-		return sm;
+		return sm; // frame energy
 	}
 
 	// Extract features from an input, offline with no delta delay
 	void extract_offline( array<T> &y, array<T> &e, const array<T> &x, const int hp)
 	{
-		y.resize( o, (x.size()-sz)/hp+1);
-		e.resize(    (x.size()-sz)/hp+1);
+		y.resize( o, (x.size()-sz)/hp + 1);
+		e.resize(    (x.size()-sz)/hp + 1);
 		int ri = 0;
 		size_t to = 0;
-		for( int i = 0 ; i < int(x.size()-sz) ; i+= hp, ++ri){
+		for( int i = 0 ; i < int(x.size()-sz) ; i+=hp,++ri){
 			// Make temps
 			array<T> tx( x.v+i, sz), ty; //( y.v+ri*o, o);
 
@@ -366,7 +363,7 @@ public:
 				for( size_t k = 0 ; k < to ; ++k){
 					y(to+k,i) = 0;
 					for( int j = -od ; j <= od ; ++j)
-						y(to+k,i) += j*y(k,std::min( std::max( size_t(0), i+j), y.n-1))/60;
+						y(to+k,i) += j * y(k,std::min( std::max( size_t(0), i+j), y.n-1)) / 60;
 				}
 	}
 };
