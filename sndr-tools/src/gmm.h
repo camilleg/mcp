@@ -20,11 +20,11 @@ class gmm_t {
 public:
   // (Don't hide these publics behind accessors until the code stabilizes.)
   int K;        // Gaussians
-  int M;        // dimension of input data
-  array<T> ldt;	// covariances aka determinants
+  int M;        // Dimensions of input data.  M == m.m == is.m.
   array<T> c;	// priors
   array<T> m;	// means
   array<T> is;	// inverse variances
+  array<T> ldt;	// covariances aka determinants
 private:
   T dg;  // Diagonal load
 
@@ -36,15 +36,20 @@ public:
   {
     M = mArg;
     K = kArg;
-    ldt.resize(  K);
     c  .resize(  K);
     m  .resize(M,K);
     is .resize(M,K);
+    ldt.resize(  K);
+  }
+  void init(const int mArg, const int kArg, std::ifstream& f)
+  {
+    init(mArg, kArg);
+    readContents(f);
   }
   void init2()
   {
     if (K <= 0)
-      throw std::runtime_error( "gmm_t::init2() uninitialized.");
+      throw std::runtime_error( "gmm_t::init2(): uninitialized.");
     const T startingValue = 0.1;
     for (int k=0; k<K; ++k) {
       ldt(k) = 0;
@@ -61,7 +66,7 @@ public:
   void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
   {
     if (K <= 0)
-      throw std::runtime_error( "gmm_t::train() uninitialized.");
+      throw std::runtime_error( "gmm_t::train(): uninitialized.");
     // Remember sizes
     const int M = x.n;
     const int N = x.m;
@@ -171,9 +176,10 @@ public:
 	// But at least the copy constructor correctly sets dimensions of the xxx2 arrays.
 	array<T> m2(m), is2(is), c2(c), ldt2(ldt);
 	array<int> learn2(learn);
+	// Like init(M, nK), but without updating K yet.
+	c  .resize(   nK);
 	m  .resize(M, nK);
 	is .resize(M, nK);
-	c  .resize(   nK);
 	ldt.resize(   nK);
 	p.resize(N, nK);
 	for (int k=0, ck=0; k<K; ++k){
@@ -199,7 +205,7 @@ public:
   void maximize(array<T>& p, const array<T> &x, const array<int>& learn)
   {
     if (K <= 0)
-      throw std::runtime_error( "gmm_t::maximize() uninitialized.");
+      throw std::runtime_error( "gmm_t::maximize(): uninitialized.");
     const int M = x.n;
     const int N = x.m;
     if (K != int(learn.size()) || K != int(p.n) || N != int(p.m))
@@ -235,13 +241,8 @@ public:
     }
   }
 
-  T placeholderForFunctionName(const array<T>& x, const int j, const int k, const int kArg=0, const int mArg=0)
+  T placeholderForFunctionName(const array<T>& x, const int j, const int k) const
   {
-    if (K<=0 && kArg>0) {
-      // This is why this function can't be const.
-      K = kArg;
-      M = mArg;
-    }
     if (K <= 0)
       throw std::runtime_error( "gmm_t::placeholderForFunctionName(): uninitialized.");
 
@@ -250,6 +251,15 @@ public:
     for (int i=0; i<M; ++i)
       qt += is(i,k) * sq(x(j,i) - m(i,k));
     return gc - 0.5*qt;
+  }
+
+  T placeholderForFunctionName2(const array<T>& x, const int j, const int k, const int kArg, const int mArg)
+  {
+    if (K<=0 && kArg>0) {
+      K = kArg;
+      M = mArg;
+    }
+    return placeholderForFunctionName(x,j,k);
   }
 
 private:
@@ -276,12 +286,39 @@ private:
     }
   }
 
+  void computeDeterminants()
+  {
+    for (int k=0; k<K; ++k) {
+      T t=0;
+      for (int i=0; i<M; ++i)
+	t += log(is(i,k));
+      ldt(k) = t;
+    }
+  }
+
 public:
+  // Read part of the data.  Compute the rest.
+  void readContents(std::ifstream& f)
+  {
+    f.read((char*)& c[0],   K*sizeof(T)); // priors
+    f.read((char*)& m[0], M*K*sizeof(T)); // means
+    f.read((char*)&is[0], M*K*sizeof(T)); // inverse variances
+    computeDeterminants();
+  }
+
+  // Write part of the data.
+  void writeContents(std::ofstream& f)
+  {
+    f.write((char*)&c[0],       K*sizeof(T)); // priors
+    f.write((char*)&m[0],   m.m*K*sizeof(T)); // means
+    f.write((char*)&is[0], is.m*K*sizeof(T)); // inverse variances
+  }
+
   void save( const std::string& filename)
   {
     using namespace std;
     if (K <= 0)
-      throw runtime_error( "gmm_t::save() uninitialized.");
+      throw runtime_error( "gmm_t::save(): uninitialized.");
     if (filename.empty())
       throw runtime_error( "gmm_t::save(\"\") failed.");
     ofstream f( filename.c_str(), ios::out | ios::binary);
@@ -290,9 +327,7 @@ public:
 
     f.write((char*)&K,          sizeof(int)); // number of gaussians
     f.write((char*)&m.m,        sizeof(int)); // dimension
-    f.write((char*)&c[0],       K*sizeof(T)); // priors
-    f.write((char*)&m[0],   m.m*K*sizeof(T)); // means
-    f.write((char*)&is[0], is.m*K*sizeof(T)); // inverse variances
+    writeContents(f);
     if (!f)
       throw runtime_error( "gmm_t::save('" + filename + "') failed.");
     cout << "Saved GMM file " << filename << ".\n";
@@ -314,27 +349,20 @@ public:
     if( M <= 0)
       throw std::runtime_error( "gmm_t::load(): nonpositive dimension.");
 
-    // priors
-    c.resize(K);
-    f.read((char*)&c[0], K*sizeof(T));
-
-    // means
-    m.resize(M, K);
-    f.read((char*)&m[0], M*K*sizeof(T));
-
-    // inverse variances
-    is.resize(M, K);
-    f.read((char*)&is[0], M*K*sizeof(T));
-
-    // compute determinants
-    ldt.resize( K);
-    for( int k = 0 ; k < K ; k++){
-      ldt(k) = 0;
-      for( int i = 0 ; i < M ; i++)
-	ldt(k) += log( is(i,k));
-    }
+    init(M,K);
+    readContents(f);
   }
 
+  void stuff(const gmm_t<T>& src)
+  {
+    // Arrays m and is are 2D not 1D, but M and K are the same for
+    // src and dst when called from hmm_t::combine(),
+    // so don't bother copying elementwise in a nested loop.
+    std::copy(src.c  .v, src.c  .v + src.c  .size(), c  .v);
+    std::copy(src.m  .v, src.m  .v + src.m  .size(), m  .v);
+    std::copy(src.is .v, src.is .v + src.is .size(), is .v);
+    std::copy(src.ldt.v, src.ldt.v + src.ldt.size(), ldt.v);
+  }
 };
 
 #endif
