@@ -107,24 +107,7 @@ public:
     for( int it = 0 ; it < iters ; it++){
 
       // *** Expectation step ***
-
-      for (int k=0; k<K; ++k) {
-#undef use_likelihoods
-#ifdef use_likelihoods
-	array<T> pTmp(N); // One slice of NxK array p.
-	likelihoods(x, pTmp);
-	for (int j=0; j<N; ++j)
-	  p(j,k) = /*exp*/(pTmp(k)); // exit log domain?
-#else
-	const T gc = log(c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI);
-	for (int j=0; j<N; ++j) {
-	  T qt = 0;
-	  for (int i=0; i<M; ++i)
-	    qt += is(i,k) * sq(x(j,i) - m(i,k));
-	  p(j,k) = gc - 0.5*qt;
-	}
-#endif
-      }
+      likelihoods(x, p);
 
       // Massage posterior into shape and compute likelihood
       lk(it) = 0;
@@ -232,8 +215,9 @@ public:
 private:
   T sq(const T x) const { return x*x; }
 
-  // Evaluate log likelihoods of M*N data x into N-vector p.
+  // Evaluate log likelihoods of M*N data x into N*K-array p.
   // Comparing several GMMs' likelihoods()s is like an HMM's classify().
+  // (Maybe later, another bool arg disables error checking, for during training.)
   void likelihoods( const array<T> &x, array<T> &p)
   {
     if (K <= 0)
@@ -241,10 +225,9 @@ private:
     const int M = x.n;
     const int N = x.m;
     if (M != int(m.m))
-      throw std::runtime_error( "gmm_t::likelihoods(): Incompatible sizes");
-    p.resize(N);
-    for (int i=0; i<N; ++i)
-      p(i) = log(0.0);
+      throw std::runtime_error( "gmm_t::likelihoods(): incompatible sizes.");
+    if (N != int(p.m) || K != int(p.n))
+      throw std::runtime_error( "gmm_t::likelihoods(): result array expected " + to_str(N) +" x "+ to_str(K) + ", not " + to_str(p.m) +" x "+ to_str(p.n) + ".");
 
     for (int k=0; k<K; ++k) {
       const T gc = log(c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI);
@@ -252,7 +235,7 @@ private:
 	T qt = 0;
 	for (int i=0; i<M; ++i)
 	  qt += is(i,k) * sq(x(j,i) - m(i,k));
-	logadd(p(j), gc - 0.5*qt);
+	p(j,k) = gc - 0.5*qt;
       }
     }
   }
