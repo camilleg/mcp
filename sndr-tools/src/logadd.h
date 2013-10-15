@@ -1,9 +1,11 @@
 #ifndef __LOGADD_H__
 #define __LOGADD_H__
 
+#include <algorithm> // std::max
 #include <cmath>
 
 // Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
+// Class T should be compatible with float or double (+, +=, <, exp, isnan, fabs).
 template <class T> inline void logadd( T& x, const T& y)
 {
   if (y == -INFINITY) {

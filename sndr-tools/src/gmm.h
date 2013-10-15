@@ -6,7 +6,6 @@
 #define __GMM_H__
 
 #include <fstream>
-#include <algorithm>
 #include <iostream>
 
 #include <x86intrin.h> // All SIMD intrinsics, not just SSE3.

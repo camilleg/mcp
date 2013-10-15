@@ -6,7 +6,6 @@
 #define __HMM_H__
 
 #include <fstream>
-#include <algorithm>
 #include <iostream>
 
 #include "gmm.h"
