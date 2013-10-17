@@ -138,19 +138,14 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	cout << "Learned target model." << endl; // target sound
 
 	// Make room in HMM
+	H.K = G[0].numGaussians();
 	H.S = 2;
-	H.K = G[0].K;
-	H.lPi.resize( H.S);
-	H.lA .resize( H.S, H.S);
+	H.lPi.resize(H.S);
+	H.lA.resize(H.S, H.S);
 	H.smps.resize(H.S);
 
 	// Copy GMMs into HMM
-	for (int s=0; s<H.S; ++s) {
-	  H.smps(s)  .c = G[s].c;
-	  H.smps(s).ldt = G[s].ldt;
-	  H.smps(s)  .m = G[s].m;
-	  H.smps(s) .is = G[s].is;
-	}
+	for (int s=0; s<H.S; ++s) H.smps(s).copyGuts(G[s]);
 
 	// Make the transition matrix row
 	if( t.size() == 0)
@@ -167,8 +162,7 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	H.lPi(1) = log(0.5);
 
 	// Normalize the priors
-	for (int s=0; s<H.S; ++s)
-	  H.smps(s).c.normalize();
+	for (int s=0; s<H.S; ++s) H.smps(s).normalizePriors();
 	cout << "Packed models in an HMM." << endl;
 	return 0;
 #endif

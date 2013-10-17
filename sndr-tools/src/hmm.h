@@ -72,7 +72,7 @@ public:
       // Copy values of Gaussians
       smps = H.smps;
       for (int s=0; s<S; ++s)
-	if (smps(s).K <= 0)
+	if (smps(s).uninitialized())
 	  throw std::runtime_error( "hmm_t::train(): uninitialized gmm.");
 
       // Copy values of initial and transition probabilities
@@ -412,7 +412,7 @@ public:
     lA.write(f);                           // log transition matrix
     f.write((const char*)&K, sizeof(int)); // number of gaussians
 
-    const int M = smps(0).M;
+    const int M = smps(0).dimensions();
     std::cout << ( "DEBUG hmm_t::save('" + filename + "'): number of dimensions M is " + to_str(M) + ".\n");
     f.write((char*)&M, sizeof(int)); // dimension
     for (int s=0; s<S; ++s)
@@ -472,8 +472,8 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, const T p1 = 
   H.K = h1.K;
   H.S = h1.S + h2.S;
 
-  const size_t M  = h1.smps(0).M;
-  const size_t M2 = h2.smps(0).M;
+  const size_t M  = h1.smps(0).dimensions();
+  const size_t M2 = h2.smps(0).dimensions();
   if( M != M2)
     throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(M) + " and " + to_str(M2) + ".");
 

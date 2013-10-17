@@ -17,20 +17,22 @@
 // Gaussian mixture model class
 template <class T>
 class gmm_t {
-public:
-  // (Don't hide these publics behind accessors until the code stabilizes.)
   int K;        // Number of Gaussians
-  int M;        // Dimensions of input data.  M == m.m == is.m.
+  int M;        // Dimensions of input data.
   array<T> c;	// priors
   array<T> m;	// means
   array<T> is;	// inverse variances
   array<T> ldt;	// covariances aka determinants
-private:
+  // M == m.m == is.m.
   T dg;  // Diagonal load
 
 public:
   // Constructor
   gmm_t(int k=0/*uninitialized*/, T d=__FLT_EPSILON__) : K(k), m(0), dg(d) {}
+
+  bool uninitialized() const { return K <= 0; }
+  int dimensions() const { return M; }
+  int numGaussians() const { return K; }
 
   void init(const int mArg, const int kArg)
   {
@@ -48,7 +50,7 @@ public:
   }
   void init2()
   {
-    if (K <= 0)
+    if (uninitialized())
       throw std::runtime_error( "gmm_t::init2(): uninitialized.");
     const T startingValue = 0.1;
     for (int k=0; k<K; ++k) {
@@ -62,10 +64,13 @@ public:
     }
   }
 
+  void normalizePriors()    { c.normalize(); }
+  void normalizeLogPriors() { c.normalize_log_also(); }
+
   // Learn data "x"
   void train( const array<T> &x, const int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
   {
-    if (K <= 0)
+    if (uninitialized())
       throw std::runtime_error( "gmm_t::train(): uninitialized.");
     // Remember sizes
     const int M = x.n;
@@ -204,7 +209,7 @@ public:
   // Update arg p and members c, m, is, ldt.
   void maximize(array<T>& p, const array<T> &x, const array<int>& learn)
   {
-    if (K <= 0)
+    if (uninitialized())
       throw std::runtime_error( "gmm_t::maximize(): uninitialized.");
     const int M = x.n;
     const int N = x.m;
@@ -243,7 +248,7 @@ public:
 
   T placeholderForFunctionName(const array<T>& x, const int j, const int k) const
   {
-    if (K <= 0)
+    if (uninitialized())
       throw std::runtime_error( "gmm_t::placeholderForFunctionName(): uninitialized.");
 
     const T gc = log(c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI); // bug: move this out of the j-loops that call this
@@ -270,7 +275,7 @@ private:
   // (Maybe later, another bool arg disables error checking, for during training.)
   void likelihoods(array<T> &p, const array<T> &x)
   {
-    if (K <= 0)
+    if (uninitialized())
       throw std::runtime_error( "gmm_t::likelihoods(): uninitialized.");
     const int M = x.n;
     const int N = x.m;
@@ -317,7 +322,7 @@ public:
   void save(const std::string& filename) const
   {
     using namespace std;
-    if (K <= 0)
+    if (uninitialized())
       throw runtime_error( "gmm_t::save(): uninitialized.");
     if (filename.empty())
       throw runtime_error( "gmm_t::save(\"\") failed.");
@@ -340,19 +345,26 @@ public:
 
     // number of gaussians
     f.read( (char*)&K, sizeof( int));
-    if( K <= 0)
+    if (K <= 0)
       throw std::runtime_error( "gmm_t::load(): nonpositive number of gaussians.");
 
     // dimension
     int M;
     f.read( (char*)&M, sizeof( int));
-    if( M <= 0)
+    if (M <= 0)
       throw std::runtime_error( "gmm_t::load(): nonpositive dimension.");
 
     init(M,K);
     readContents(f);
   }
 
+  void copyGuts(const gmm_t<T>& src)
+  {
+    c = src.c;
+    ldt = src.ldt;
+    m = src.m;
+    is = src.is;
+  }
   void stuff(const gmm_t<T>& src)
   {
     // Arrays m and is are 2D not 1D, but M and K are the same for

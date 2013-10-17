@@ -253,11 +253,10 @@ public:
 	// Scale elements so they sum to unity.
 	void normalize()
 	{
-	  T sum = 0;
-	  for (size_t i=0; i<size(); ++i) sum += v[i];
-	  if (sum == 0)
+	  const T a = sum();
+	  if (a == 0)
 	    return;
-	  for (size_t i=0; i<size(); ++i) v[i] /= sum;
+	  for (size_t i=0; i<size(); ++i) v[i] /= a;
 	}
 
 	// Scale log-elements so they sum to unity.
@@ -268,6 +267,13 @@ public:
 	  if (sum == 0)
 	    return;
 	  for (size_t i=0; i<size(); ++i) v[i] = log(exp(v[i]) / sum);
+	}
+
+	// Normalize log-elements in another way.
+	void normalize_log_also()
+	{
+	  const T a = log(sum());
+	  for (size_t i=0; i<size(); ++i) v[i] -= a;
 	}
 
 	// Scale elements so largest element is unity.
@@ -290,7 +296,7 @@ public:
 	  for (size_t i=0; i<m; ++i) v[i+j*m] /= t;
 	}
 
-	// Sum elements
+	// Sum of elements.
 	T sum() const
 	{
 	  T a = 0;
@@ -298,7 +304,7 @@ public:
 	  return a;
 	}
 
-	// Sum elements in j'th row
+	// Sum of elements in j'th row.
 	T sum(const size_t j) const
 	{
 	  if (j >= n)

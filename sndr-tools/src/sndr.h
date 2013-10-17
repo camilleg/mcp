@@ -375,24 +375,20 @@ public:
 //      throw std::runtime_error("AudioClassifier_t<T>::combine(): Input models are not using the same features");
 
       // Get the model's GMM
-      const gmm_t<T> &G = A->G;
+      const gmm_t<T>& G = A->G;
 
       if (ai == 0) {
-	// First time through loop.
-	// Make room in HMM.
+	// First time through loop.  Allocate memory in HMM.
 	H.S = Al.size();
-	H.K = G.K;
+	H.K = G.numGaussians();
 	std::cout << "Making a " << H.S << "-state HMM with " << H.K << " gaussians per state." << std::endl;
 	H.lPi.resize(H.S);
 	H.lA.resize(H.S, H.S);
 	H.smps.resize(H.S);
       }
 
-      // Copy GMMs into HMM
-      H.smps(ai)  .c = G  .c;
-      H.smps(ai).ldt = G.ldt;
-      H.smps(ai)  .m = G  .m;
-      H.smps(ai) .is = G .is;
+      // Copy GMMs into HMM.
+      H.smps(ai).copyGuts(G);
 
       // Make the transition matrix row
       if (trans > 0){
@@ -404,26 +400,22 @@ public:
       }			
   }
 
-    // Initial probabilities
-    for (int i=0; i<H.S; ++i) H.lPi(i) = log(1.0/H.S);
+    // Set initial probabilities H.lPi.
+    for (int s=0; s<H.S; ++s) H.lPi(s) = log(1.0/H.S);
     
-    // Normalize the priors
-    for (int i=0; i<H.S; ++i) {
-      const T s = log(H.smps(i).c.sum());
-      for (int k=0; k<H.K; ++k) H.smps(i).c(k) -= s;
-    }
+    for (int s=0; s<H.S; ++s) H.smps(s).normalizeLogPriors();
 
-    // Bias the transitions
+    // Bias the transitions H.lA.
     const int c = H.S * H.S;
     if (int(r.size()) == c) {
       std::cout << "Biasing" << std::endl;
       for (int i=0; i<c; ++i) H.lA(i) -= r(i);
     }
 
-    // Re-normalize the transition matrix
+    // Re-normalize the transition matrix H.lA.
     for (int i=0; i<H.S; ++i){
       T ls = log(0.0);
-      for (int j=0; j<H.S; ++j) ls = std::max(ls, H.lA(i,j)) + log1p(exp(-fabs(ls-H.lA(i,j))));
+      for (int j=0; j<H.S; ++j) ls = std::max(ls, H.lA(i,j)) + log1p(exp(-fabs(ls - H.lA(i,j))));
       for (int j=0; j<H.S; ++j) H.lA(i,j) -= ls;
     }
 #endif
