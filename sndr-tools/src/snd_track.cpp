@@ -122,10 +122,7 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	cout << "Learned target model" << endl;
 	
 	// Pack into a single HMM
-	if( t.size() == 1)
-		combine( H, H1, H2, real_t(1.-t(0)), real_t(1.-t(0)));
-	else
-		combine( H, H1, H2, real_t(1.-t(0)), real_t(1.-t(1)));
+	combine( H, H1, H2, real_t(1.-t(0)), real_t(1.-t(t.size()==1 ? 0 : 1)));
 	cout << "Packed models in an HMM" << endl;
 
 	// Define in and out state threshhold
@@ -145,33 +142,33 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	H.K = G[0].K;
 	H.lPi.resize( H.S);
 	H.lA .resize( H.S, H.S);
-	H.gmms.resize(H.S);
+	H.smps.resize(H.S);
 
 	// Copy GMMs into HMM
 	for (int s=0; s<H.S; ++s) {
-	  H.gmms(s)  .c = G[s].c;
-	  H.gmms(s).ldt = G[s].ldt;
-	  H.gmms(s)  .m = G[s].m;
-	  H.gmms(s) .is = G[s].is;
+	  H.smps(s)  .c = G[s].c;
+	  H.smps(s).ldt = G[s].ldt;
+	  H.smps(s)  .m = G[s].m;
+	  H.smps(s) .is = G[s].is;
 	}
 
 	// Make the transition matrix row
 	if( t.size() == 0)
 		t.push_back( .9);
-	H.lA(0,0) = log( t(0));
-	H.lA(0,1) = log( 1.-t(0));
+	H.lA(0,0) = log(t(0));
+	H.lA(0,1) = log1p(-t(0));
 	const real_t tt = t.size() > 1 ? t(1) : t(0);
-	H.lA(1,0) = log( 1.-tt);
-	H.lA(1,1) = log( tt);
+	H.lA(1,0) = log1p(-tt);
+	H.lA(1,1) = log(tt);
 	cout << "Transition matrix: \n" << H.lA;
 
 	// Make initial probabilities
-	H.lPi(0) = log( .5);
-	H.lPi(1) = log( .5);
+	H.lPi(0) = log(0.5);
+	H.lPi(1) = log(0.5);
 
 	// Normalize the priors
 	for (int s=0; s<H.S; ++s)
-		H.gmms(s).c.normalize();
+	  H.smps(s).c.normalize();
 	cout << "Packed models in an HMM." << endl;
 	return 0;
 #endif
@@ -183,7 +180,7 @@ array<int> search( const array<real_t> &in, hmm_t<real_t> &H, const array<real_t
 {
 	// Run the classification
 	array<int> o;
-	H.classify( in, o, b);
+	H.classify( o, in, b);
 	return o;
 }
 
