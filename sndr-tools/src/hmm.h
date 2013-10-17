@@ -20,18 +20,18 @@ public:
   int S; // States
   int K; // Gaussians per state
 
-  array<T> lPi; // Model parameter: initial probabilities.
-  array<T> lA;  // Model parameter: matrix of transition probabilities.
-  array<gmm_t<T> > gmms; // Gaussian mixture data
+  array<T> lPi; // Model parameter: initial probabilities
+  array<T> lA;  // Model parameter: matrix of transition probabilities
+  array<gmm_t<T> > smps; // State model parameters.  Could be a GMM, HMM, ANN, etc.
 
 private:
-  // For each element of gmms.
-  class froobnikStorage_t {
+  // For each element of smps.
+  class statemodel_t {
   public:
-    array<T> g;      // TODO: what is this?
+    array<T> g;      // (From line 151 in sndr-tools_v0.6/src/hmm.h.  A "buffer.")
     array<T> la, lb; // Alpha and beta parameters for iterations in Baum-Welch training.
   };
-  array<froobnikStorage_t> froobnikStore; // related stuff for each element of gmms
+  array<statemodel_t> statemodel; // Related stuff for each element of smps
   array<T> xi, txi; // SxS parameters for Baum-Welch iterations
 
 public:
@@ -47,16 +47,16 @@ public:
     std::cout << "HMM training " << M << " x " << N << std::endl;
 
     // Setup state model parameters
-    gmms.resize(S);
+    smps.resize(S);
     for (int s=0; s<S; ++s) {
       // M and N come from arg x.  K comes from constructor, or from load().
-      gmms(s).init(M,K);
+      smps(s).init(M,K);
     }
 
     if (H.S == 0) {
       // Initial values of Gaussians
       for (int s=0; s<S; ++s)
-	gmms(s).init2();
+	smps(s).init2();
 
       // Initial values of initial and transition probabilities
       lPi.resize(S);
@@ -70,9 +70,9 @@ public:
       }
     }else{
       // Copy values of Gaussians
-      gmms = H.gmms;
+      smps = H.smps;
       for (int s=0; s<S; ++s)
-	if (gmms(s).K <= 0)
+	if (smps(s).K <= 0)
 	  throw std::runtime_error( "hmm_t::train(): uninitialized gmm.");
 
       // Copy values of initial and transition probabilities
@@ -84,9 +84,9 @@ public:
     array<T> q( N, K, S);
     array<T> lp( S, N);
     array<T> lk( iters);
-    froobnikStore.resize(S);
+    statemodel.resize(S);
     for( int s=0; s<S; ++s) {
-      froobnikStorage_t& store = froobnikStore(s); // related stuff for each element of gmms
+      statemodel_t& store = statemodel(s); // related stuff for each element of smps
       store.g.resize(N,K);
       store.la.resize(N);
       store.lb.resize(N);
@@ -108,7 +108,7 @@ public:
       for( int s=0; s<S; ++s)
 	for( int k=0; k<K; ++k)
 	  for( int j=0; j<N; ++j)
-	    q(j,k,s) = gmms(s).placeholderForFunctionName(x,j,k);
+	    q(j,k,s) = smps(s).placeholderForFunctionName(x,j,k);
 
       // Compute overall state likelihoods
       for( int s=0; s<S; ++s)
@@ -121,26 +121,26 @@ public:
 
       // Get alphas
       for (int s=0; s<S; ++s)
-	froobnikStore(s).la(0) = lPi(s) + lp(s,0);
+	statemodel(s).la(0) = lPi(s) + lp(s,0);
       for (int t=0; t<N-1; ++t) {
 	for (int j=0; j<S; ++j) {
 	  T ls = log(0.0);
 	  for (int s=0; s<S; ++s)
-	    logadd( ls, froobnikStore(s).la(t) + lA(s,j));
-	  froobnikStore(j).la(t+1) = ls + lp(j,t+1);
+	    logadd( ls, statemodel(s).la(t) + lA(s,j));
+	  statemodel(j).la(t+1) = ls + lp(j,t+1);
 	}
       }
 
       // Get betas
       for (int s=0; s<S-1; ++s)
-	froobnikStore(s).lb(N-1) = log(0.0);
-      froobnikStore(S-1).lb(N-1) = 0;
+	statemodel(s).lb(N-1) = log(0.0);
+      statemodel(S-1).lb(N-1) = 0;
       for (int t = N-2; t >= 0; --t) {
 	for (int i=0; i<S; ++i) {
 	  T ls = log(0.0);
 	  for (int j=0; j<S; ++j)
-	    logadd(ls, froobnikStore(j).lb(t+1) + lA(i,j) + lp(j,t+1));
-	  froobnikStore(i).lb(t) = ls;
+	    logadd(ls, statemodel(j).lb(t+1) + lA(i,j) + lp(j,t+1));
+	  statemodel(i).lb(t) = ls;
 	}
       }
 
@@ -151,7 +151,7 @@ public:
 	T ls = log(0.0);
 	for (int s=0; s<S; ++s) {
 	  for (int j=0; j<S; ++j) {
-	    txi(s,j) = lA(s,j) + froobnikStore(s).la(t) + lp(j,t+1) + froobnikStore(j).lb(t+1);
+	    txi(s,j) = lA(s,j) + statemodel(s).la(t) + lp(j,t+1) + statemodel(j).lb(t+1);
 	    logadd(ls, txi(s,j));
 	  }
 	}
@@ -164,13 +164,13 @@ public:
       for( int j=0; j<N; ++j) {
 	T ls = log(0.0);
 	for (int s=0; s<S; ++s) {
-	  la_lb[s] = froobnikStore(s).la(j) + froobnikStore(s).lb(j);
+	  la_lb[s] = statemodel(s).la(j) + statemodel(s).lb(j);
 	  logadd( ls, la_lb[s]);
 	}
 	for (int s=0; s<S; ++s){
 	  const T tg = la_lb[s] - lp(s,j) - ls;
 	  for( int k=0; k<K; ++k) {
-	    froobnikStore(s).g(j,k) = tg + q(j,k,s);
+	    statemodel(s).g(j,k) = tg + q(j,k,s);
 	  }
 	}
       }
@@ -178,14 +178,14 @@ public:
       // Get overall likelihood
       lk(it) = log(0.0);
       for (int s=0; s<S; ++s)
-	logadd(lk(it), froobnikStore(s).la(N-1));
+	logadd(lk(it), statemodel(s).la(N-1));
       if( ((it+1)%5==0) || it == iters-1)
 	std::cout << "HMM iteration " << it+1 << " of " << iters << ": likelihood " << lk(it) << std::endl;
 
       // Exit log domain
       for (int s=0; s<S; ++s)
 	for( int i=0; i<N*K; ++i)
-	  froobnikStore(s).g[i] = exp(froobnikStore(s).g[i]);
+	  statemodel(s).g[i] = exp(statemodel(s).g[i]);
 
 
       // *** Maximization step ***
@@ -194,7 +194,7 @@ public:
 	// Initial probabilities
 	T tp = log(0.0);
 	for( int i=0; i<K; ++i)
-	  logadd(tp, log(froobnikStore(s).g(0,i)));
+	  logadd(tp, log(statemodel(s).g(0,i)));
 	lPi(s) = tp;
 
 	// Transition matrix
@@ -206,7 +206,7 @@ public:
       }
 
       for (int s=0; s<S; ++s)
-	gmms(s).maximize(froobnikStore(s).g, x, dummy);
+	smps(s).maximize(statemodel(s).g, x, dummy);
     }
   }
 
@@ -225,7 +225,7 @@ public:
     for( int s=0; s<S; ++s)
       for( int k=0; k<K; ++k)
 	for( int j=0; j<N; ++j)
-	  logadd(lB(s,j), gmms(s).placeholderForFunctionName2(x,j,k,K,M));
+	  logadd(lB(s,j), smps(s).placeholderForFunctionName2(x,j,k,K,M));
 
     // Add the bias to first state
     if (!bias.empty()) {
@@ -410,11 +410,11 @@ public:
     f.write((char*)&lA[0], S*S*sizeof(T)); // log transition matrix
     f.write((char*)&K,       sizeof(int)); // number of gaussians
 
-    const int M = gmms(0).M;
+    const int M = smps(0).M;
     std::cout << ( "DEBUG hmm_t::save('" + filename + "'): number of dimensions M is " + to_str(M) + ".\n");
     f.write((char*)&M, sizeof(int)); // dimension
     for (int s=0; s<S; ++s)
-      gmms(s).writeContents(f);
+      smps(s).writeContents(f);
     if (!f)
       throw runtime_error( "hmm_t::save('" + filename + "') failed.");
     cout << "Saved HMM file " << filename << ".\n";
@@ -454,9 +454,9 @@ public:
     if (M <= 0)
       throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of dimensions " + to_str(M) + ".");
 
-    gmms.resize(S);
+    smps.resize(S);
     for (int s=0; s<S; ++s)
-      gmms(s).init(M, K, f);
+      smps(s).init(M, K, f);
 
     if (!f)
       throw runtime_error( "hmm_t::load('" + filename + "') failed.");
@@ -474,20 +474,20 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, const T p1 = 
   H.S = h1.S + h2.S;
 
   // Allocate parameters.
-  if( h1.gmms(0).M != h2.gmms(0).M)
-    throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(h1.gmms(0).M) + " and " + to_str(h2.gmms(0).M) + ".");
-  const size_t M = h1.gmms(0).M;
+  if( h1.smps(0).M != h2.smps(0).M)
+    throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(h1.smps(0).M) + " and " + to_str(h2.smps(0).M) + ".");
+  const size_t M = h1.smps(0).M;
 
   H.lPi.resize(H.S);
   H.lA .resize(H.S, H.S);
 
-  H.gmms.resize(H.S);
-  for (int s=0; s<H.S; ++s) H.gmms(s).init(M, H.K);
+  H.smps.resize(H.S);
+  for (int s=0; s<H.S; ++s) H.smps(s).init(M, H.K);
 
-  // Concatenate h1.gmms and h2.gmms into H.gmms, S-wise.
+  // Concatenate h1.smps and h2.smps into H.smps, S-wise.
   // In h1, h2, and H, only S differs.  M and K are the same, by construction.
-  for (int s=0; s<h1.S; ++s) H.gmms(s       ).stuff(h1.gmms(s));
-  for (int s=0; s<h2.S; ++s) H.gmms(s + h1.S).stuff(h2.gmms(s));
+  for (int s=0; s<h1.S; ++s) H.smps(s       ).stuff(h1.smps(s));
+  for (int s=0; s<h2.S; ++s) H.smps(s + h1.S).stuff(h2.smps(s));
 
   // Make transition matrix and initial probabilities:
   // concatenate h1.lPi and h2.lPi into H.lPi;
