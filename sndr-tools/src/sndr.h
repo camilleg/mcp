@@ -31,7 +31,7 @@ public:
   std::string fopts; // Audio feature options
   aufeat_t<T> F; // Feature extractor
 
-  // Initializers
+  // Constructors
   AudioFeatureExtractor_t(int _b=13, T _tsz=.1, T _flo=120, T _fhi=6855,
       int _fb=30, std::string _fopts=std::string("cdm"), T _thr=0, int _av=1) : 
     b(_b), fb(_fb), hp(1), av(_av), sz(0), tsz(_tsz),
@@ -122,8 +122,8 @@ public:
   }
   bool operator!=(const AudioFeatureExtractor_t<T> &A) const { return !(*this == A); }
 								  
-  // Extract sound features
-  void operator()(const array<T> &s, int sr, array<T> &f, array<int> &p, bool thrm=false)
+  // Extract features f and peaks p from sound s.
+  void operator()(array<T> &f, array<int> &p, const array<T> &s, const int sr, const bool thrm=false)
   {
     // Init the feature structure according to the new sample rate
     if (sr != srate){
@@ -220,12 +220,12 @@ public:
   // Initialize from a feature extractor
   AudioFeatures_t(AudioFeatureExtractor_t<T> &_F) : F(_F) {}
 
-  // Append sound to learning dictionary
-  void operator()(const array<T> &in, T sr, bool thrm=false)
+  // Append sound "in" to learning dictionary D and S
+  void operator()(const array<T> &in, const T sr, bool thrm=false)
   {
     D.push_back(array<T>());
     S.push_back(array<int>());
-    F(in, sr, D.back(), S.back(), thrm);
+    F(D.back(), S.back(), in, sr, thrm);
   }
 
   // Consolidate all feature sets
@@ -289,7 +289,7 @@ public:
   }
   
   // Train model G from data A and an initial model.
-  void operator()(AudioFeatures_t<T> &A, const int it, baseModel_t<T> Ginitial)
+  void operator()(AudioFeatures_t<T> &A, const int it, const baseModel_t<T> Ginitial)
   {
     if (A.F != F)
       throw std::runtime_error("AudioModel_t model-trained feature space mismatch.");
@@ -298,7 +298,7 @@ public:
     std::cout << "Updated model in " << it << " iterations." << std::endl;
   }
   
-  bool save(const std::string &f) {
+  bool save(const std::string &f) const {
     if (f.empty()) {
       std::cout << "error: AudioModel_t::save(\"\");" << std::endl;
       return false;
@@ -358,7 +358,7 @@ public:
   }
 
   // Combine multiple sound models into one classifier
-  void combine(std::list<AudioModel_t<T> > &Al)
+  void combine(const std::list<AudioModel_t<T> > &Al)
   {
 #ifdef __HMM_TRAIN
     // Pack into a single HMM.
@@ -369,7 +369,7 @@ public:
 #else
     // Pack all GMMs in a HMM
     int ai = 0;
-    for (typename std::list<AudioModel_t<T> >::iterator A=Al.begin(); A!=Al.end(); ++A,++ai) {
+    for (typename std::list<AudioModel_t<T> >::const_iterator A=Al.begin(); A!=Al.end(); ++A,++ai) {
 //    // Make sure all models are relevant
 //    if ((*A).F != F)
 //      throw std::runtime_error("AudioClassifier_t<T>::combine(): Input models are not using the same features");
@@ -385,14 +385,14 @@ public:
 	std::cout << "Making a " << H.S << "-state HMM with " << H.K << " gaussians per state." << std::endl;
 	H.lPi.resize(H.S);
 	H.lA.resize(H.S, H.S);
-	H.gmms.resize(H.S);
+	H.smps.resize(H.S);
       }
 
       // Copy GMMs into HMM
-      H.gmms(ai)  .c = G  .c;
-      H.gmms(ai).ldt = G.ldt;
-      H.gmms(ai)  .m = G  .m;
-      H.gmms(ai) .is = G .is;
+      H.smps(ai)  .c = G  .c;
+      H.smps(ai).ldt = G.ldt;
+      H.smps(ai)  .m = G  .m;
+      H.smps(ai) .is = G .is;
 
       // Make the transition matrix row
       if (trans > 0){
@@ -407,10 +407,10 @@ public:
     // Initial probabilities
     for (int i=0; i<H.S; ++i) H.lPi(i) = log(1.0/H.S);
     
-    // Norm the priors
+    // Normalize the priors
     for (int i=0; i<H.S; ++i) {
-      const T s = H.gmms(i).c.sum();
-      for (int k=0; k<H.K; ++k) H.gmms(i).c(k) -= log(s);
+      const T s = log(H.smps(i).c.sum());
+      for (int k=0; k<H.K; ++k) H.smps(i).c(k) -= s;
     }
 
     // Bias the transitions
@@ -436,10 +436,10 @@ public:
     // Get the sound features
     array<T> D;
     array<int> S;
-    F(in, sr, D, S, false);
+    F(D, S, in, sr, false);
 
     // Classify
-    H.classify(D, o, bias);
+    H.classify(o, D, bias);
     std::cout << "Input length " << in.size() << ", window size " << F.sz << ", output length " << o.size() << "." << std::endl;
 
     // Relabel the silent parts to the last known class

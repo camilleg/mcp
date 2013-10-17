@@ -19,7 +19,7 @@ template <class T>
 class gmm_t {
 public:
   // (Don't hide these publics behind accessors until the code stabilizes.)
-  int K;        // Gaussians
+  int K;        // Number of Gaussians
   int M;        // Dimensions of input data.  M == m.m == is.m.
   array<T> c;	// priors
   array<T> m;	// means
@@ -63,7 +63,7 @@ public:
   }
 
   // Learn data "x"
-  void train( const array<T> &x, int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
+  void train( const array<T> &x, const int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
   {
     if (K <= 0)
       throw std::runtime_error( "gmm_t::train(): uninitialized.");
@@ -135,7 +135,7 @@ public:
     for( int it = 0 ; it < iters ; it++){
 
       // *** Expectation step ***
-      likelihoods(x, p);
+      likelihoods(p, x);
 
       // Massage posterior into shape and compute likelihood
       lk(it) = 0;
@@ -268,7 +268,7 @@ private:
   // Evaluate log likelihoods of M*N data x into N*K-array p.
   // Comparing several GMMs' likelihoods()s is like an HMM's classify().
   // (Maybe later, another bool arg disables error checking, for during training.)
-  void likelihoods( const array<T> &x, array<T> &p)
+  void likelihoods(array<T> &p, const array<T> &x)
   {
     if (K <= 0)
       throw std::runtime_error( "gmm_t::likelihoods(): uninitialized.");
@@ -300,21 +300,21 @@ public:
   // Read part of the data.  Compute the rest.
   void readContents(std::ifstream& f)
   {
-    f.read((char*)& c[0],   K*sizeof(T)); // priors
-    f.read((char*)& m[0], M*K*sizeof(T)); // means
-    f.read((char*)&is[0], M*K*sizeof(T)); // inverse variances
+    c .read(f, K); // priors
+    m .read(f, M, K); // means
+    is.read(f, M, K); // inverse variances
     computeDeterminants();
   }
 
   // Write part of the data.
-  void writeContents(std::ofstream& f)
+  void writeContents(std::ofstream& f) const
   {
-    f.write((char*)&c[0],       K*sizeof(T)); // priors
-    f.write((char*)&m[0],   m.m*K*sizeof(T)); // means
-    f.write((char*)&is[0], is.m*K*sizeof(T)); // inverse variances
+    c .write(f); // priors
+    m .write(f); // means
+    is.write(f); // inverse variances
   }
 
-  void save( const std::string& filename)
+  void save(const std::string& filename) const
   {
     using namespace std;
     if (K <= 0)
@@ -325,15 +325,15 @@ public:
     if (!f)
       throw runtime_error( "gmm_t::save('" + filename + "') failed.");
 
-    f.write((char*)&K,          sizeof(int)); // number of gaussians
-    f.write((char*)&m.m,        sizeof(int)); // dimension
+    f.write((char*)&K, sizeof(int)); // number of gaussians
+    f.write((char*)&M, sizeof(int)); // dimension
     writeContents(f);
     if (!f)
       throw runtime_error( "gmm_t::save('" + filename + "') failed.");
     cout << "Saved GMM file " << filename << ".\n";
   }
 
-  void load( const std::string& filename)
+  void load(const std::string& filename)
   {
     using namespace std;
     ifstream f( filename.c_str(), ios::in | ios::binary);

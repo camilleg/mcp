@@ -100,7 +100,7 @@ int main( int argc, const char **argv)
 			C( x, int( f.samplerate));
 
 			// ... and output .wav and .edl files.
-			if (dump!="") {
+			if (dump != "") {
 				for (int j= 0; j<C.H.S; ++j)
 					C.make_snd( x, infile(i) + "." + dump + "." + to_str(j) + ".wav", j);
 			}

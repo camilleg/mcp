@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <sstream> // for to_str()
@@ -161,6 +162,11 @@ public:
 		return v[i1];
 	}
 
+	// Convert to a pointer, e.g. for single-value indexing the flattened elements
+	// to e.g. multiply two matrices elementwise, or pass an "iterator" to std::copy().
+	// (Don't extend this to const pointers, because ambiguity results.)
+	operator T*() { return v; }
+
 	// Resize
 	void resize(const size_t i1, const size_t i2 = 1, const size_t i3 = 1)
 	{
@@ -311,13 +317,16 @@ public:
 	T min() const { return *std::min_element(v, v+size()); }
 	T max() const { return *std::max_element(v, v+size()); }
 
-	// Convert to a pointer, e.g. for single-value indexing the flattened elements
-	// to e.g. multiply two matrices elementwise, or pass an "iterator" to std::copy().
-	// (Don't extend this to const pointers, because ambiguity results.)
-	operator T*() { return v; }
-
 	// todo: normalize values of m,n,k so if one of them is zero, all of them are;
 	// i.e., forbid multiple representations with the same meaning (empty()).
+	
+	void write(std::ofstream& f) const { f.write((const char*)v,  size()*sizeof(T)); }
+
+	void read(std::ifstream& f, const size_t i1, const size_t i2=1, const size_t i3=1)
+	{
+	  resize(i1, i2, i3);
+	  f.read((char*)v, size()*sizeof(T));
+	}
 };
 
 // ostream interface

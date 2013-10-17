@@ -36,10 +36,10 @@ private:
 
 public:
   // Constructor
-  hmm_t(const int s=0, int k=1): S(s), K(k) {}
+  hmm_t(const int s=0, const int k=1): S(s), K(k) {}
 
   // Learn data
-  void train( const array<T> &x, int iters = 100, const hmm_t<T> &H = hmm_t<T>())
+  void train(const array<T> &x, const int iters = 100, const hmm_t<T> &H = hmm_t<T>())
   {
     // Reverse x's dims.
     const int M = x.n;
@@ -210,8 +210,8 @@ public:
     }
   }
 
-  // Classify using a known HMM
-  void classify( const array<T> &x, array<int> &q, const array<T> &bias = array<T>(), const int ist = -1)
+  // Classify data "x" into "q" using a known HMM
+  void classify( array<int> &q, const array<T> &x, const array<T> &bias = array<T>(), const int ist = -1)
   {
     // Input dims of array are reversed
     const int M = x.n, N = x.m;
@@ -236,14 +236,14 @@ public:
 	  lB(i,j) += bias(i);
     }
 
-    viterbi( lB, q, ist);
+    viterbi( q, lB, ist);
   }
 
 private:
   T sq(const T x) const { return x*x; }
 
   // Viterbi decoding
-  void viterbi( const array<T> &lB, array<int> &q, const int ist = -1)
+  void viterbi(array<int> &q, const array<T> &lB, const int ist = -1)
   {
     const int N = lB.n;
     array<T> d( S, 2);
@@ -303,8 +303,9 @@ private:
       q(t) = p(q(t+1),t+1);
   }
 
+#ifdef UNUSED
   // Short-time Viterbi decoding
-  void stviterbi( const array<T> &lB, array<int> &q)
+  void stviterbi(array<int> &q, const array<T> &lB)
   {
     const int M = lB.m;
     const int N = lB.n;
@@ -348,7 +349,7 @@ private:
   }
 
   // Interim Viterbi decoding
-  void iviterbi( const array<T> &lB, const int a, const int b, array<T> &lP, array<int> &q)
+  void iviterbi(array<int> &q, const array<T> &lB, const array<T> &lP, const int a, const int b)
   {
     const int N = b-a;
 
@@ -394,9 +395,10 @@ private:
 	q(i,t) = p(q(i,t+1),t+1);
     }
   }
+#endif
 
 public:
-  void save( const std::string& filename)
+  void save(const std::string& filename) const
   {
     using namespace std;
     if (filename.empty())
@@ -405,10 +407,10 @@ public:
     if (!f)
       throw runtime_error( "hmm_t::save('" + filename + "') failed.");
 
-    f.write((char*)&S,       sizeof(int)); // number of states
-    f.write((char*)&lPi[0],  S*sizeof(T)); // initial log probabilities
-    f.write((char*)&lA[0], S*S*sizeof(T)); // log transition matrix
-    f.write((char*)&K,       sizeof(int)); // number of gaussians
+    f.write((const char*)&S, sizeof(int)); // number of states
+    lPi.write(f);                          // initial log probabilities
+    lA.write(f);                           // log transition matrix
+    f.write((const char*)&K, sizeof(int)); // number of gaussians
 
     const int M = smps(0).M;
     std::cout << ( "DEBUG hmm_t::save('" + filename + "'): number of dimensions M is " + to_str(M) + ".\n");
@@ -420,7 +422,7 @@ public:
     cout << "Saved HMM file " << filename << ".\n";
   }
 
-  void load( const std::string& filename)
+  void load(const std::string& filename)
   {
     using namespace std;
     if (filename.empty())
@@ -436,12 +438,10 @@ public:
       throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of states " + to_str(S) + ".");
 
     // initial log probabilities
-    lPi.resize( S);
-    f.read( (char*)&lPi[0], S*sizeof( T));
+    lPi.read(f, S);
 
     // log transition matrix
-    lA.resize( S, S);
-    f.read( (char*)&lA[0], S*S*sizeof( T));
+    lA.read(f, S, S);
 
     // number of gaussians
     f.read( (char*)&K, sizeof( int));
@@ -455,8 +455,7 @@ public:
       throw runtime_error( "hmm_t::load('" + filename + "'): nonpositive number of dimensions " + to_str(M) + ".");
 
     smps.resize(S);
-    for (int s=0; s<S; ++s)
-      smps(s).init(M, K, f);
+    for (int s=0; s<S; ++s) smps(s).init(M, K, f);
 
     if (!f)
       throw runtime_error( "hmm_t::load('" + filename + "') failed.");
@@ -473,14 +472,14 @@ void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, const T p1 = 
   H.K = h1.K;
   H.S = h1.S + h2.S;
 
-  // Allocate parameters.
-  if( h1.smps(0).M != h2.smps(0).M)
-    throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(h1.smps(0).M) + " and " + to_str(h2.smps(0).M) + ".");
-  const size_t M = h1.smps(0).M;
+  const size_t M  = h1.smps(0).M;
+  const size_t M2 = h2.smps(0).M;
+  if( M != M2)
+    throw std::runtime_error( "combine(): incompatible HMM input sizes " + to_str(M) + " and " + to_str(M2) + ".");
 
+  // Allocate memory.
   H.lPi.resize(H.S);
   H.lA .resize(H.S, H.S);
-
   H.smps.resize(H.S);
   for (int s=0; s<H.S; ++s) H.smps(s).init(M, H.K);
 
