@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "ann.h"
 #include "gmm.h"
 #include "array.h"
 #include "logadd.h"
@@ -22,7 +23,10 @@ public:
 
   array<T> lPi; // Model parameter: initial probabilities
   array<T> lA;  // Model parameter: matrix of transition probabilities
-  array<gmm_t<T> > smps; // State model parameters.  Could be a GMM, HMM, ANN, etc.
+
+  // State model parameters.  Could be a GMM, HMM, ANN, etc.
+  array<gmm_t<T> > smps;
+  array<ann_t<T> > smps_unused_but_at_least_it_compiles;
 
 private:
   // For each element of smps.

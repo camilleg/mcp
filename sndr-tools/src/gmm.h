@@ -13,10 +13,11 @@
 
 #include "array.h"
 #include "logadd.h"
+#include "state.h"
 
 // Gaussian mixture model class
 template <class T>
-class gmm_t {
+class gmm_t: public state_t<T> {
   int K;        // Number of Gaussians
   int M;        // Dimensions of input data.
   array<T> c;	// priors

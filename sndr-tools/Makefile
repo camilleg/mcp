@@ -31,10 +31,12 @@ all: $(BIN)/snd_track $(BIN)/sndr
 $(BIN):
 	mkdir $(BIN)
 
-$(BIN)/snd_track: $(SRC)/snd_track.cpp $(SRC)/../../aufeat.h $(SRC)/logadd.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h Makefile
+$(H):  $(SRC)/../../aufeat.h $(SRC)/logadd.h $(SRC)/state.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/ann.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h
+
+$(BIN)/snd_track: $(SRC)/snd_track.cpp $(H) Makefile
 	$(CXX) $(SRC)/snd_track.cpp $(CXXFLAGS) $(LDFLAGS) -o $(BIN)/snd_track
 
-$(BIN)/sndr: $(SRC)/sndr.cpp $(SRC)/sndr.h $(SRC)/../../aufeat.h $(SRC)/logadd.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h Makefile
+$(BIN)/sndr: $(SRC)/sndr.cpp $(SRC)/sndr.h $(H) Makefile
 	$(CXX) $(SRC)/sndr.cpp $(CXXFLAGS) $(LDFLAGS) -o $(BIN)/sndr
 
 clean:
