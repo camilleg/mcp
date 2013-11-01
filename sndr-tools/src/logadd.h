@@ -4,9 +4,11 @@
 #include <algorithm> // std::max
 #include <cmath>
 
+#include "real_t.h"
+
 // Log-add y to x.  For log-sum-exp idiom, to avoid underflow and overflow.
-// Class T should be compatible with float or double (+, +=, <, exp, isnan, fabs).
-template <class T> inline void logadd( T& x, const T& y)
+
+inline void logadd(real_t& x, const real_t& y)
 {
   if (y == -INFINITY) {
     // x remains unchanged, trivially.
@@ -19,7 +21,7 @@ template <class T> inline void logadd( T& x, const T& y)
   if (isnan(x) || isnan(y))
     return;
 
-  const T z = fabs(x-y);
+  const real_t z = fabs(x-y);
   if (z > 30.0) {
     x = std::max(x, y);
     return;

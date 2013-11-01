@@ -15,35 +15,34 @@
 
 // Hidden Markov Model class
 
-template <class T>
 class hmm_t {
 public:
   int S; // States
   int K; // Gaussians per state
 
-  array<T> lPi; // Model parameter: initial probabilities
-  array<T> lA;  // Model parameter: matrix of transition probabilities
+  array<real_t> lPi; // Model parameter: initial probabilities
+  array<real_t> lA;  // Model parameter: matrix of transition probabilities
 
   // State model parameters.  Could be a GMM, HMM, ANN, etc.
-  array<gmm_t<T> > smps;
-  array<ann_t<T> > smps_unused_but_at_least_it_compiles;
+  array<gmm_t> smps;
+  array<ann_t> smps_unused_but_at_least_it_compiles;
 
 private:
   // For each element of smps.
   class statemodel_t {
   public:
-    array<T> g;      // (From line 151 in sndr-tools_v0.6/src/hmm.h.  A "buffer.")
-    array<T> la, lb; // Alpha and beta parameters for iterations in Baum-Welch training.
+    array<real_t> g;      // (From line 151 in sndr-tools_v0.6/src/hmm.h.  A "buffer.")
+    array<real_t> la, lb; // Alpha and beta parameters for iterations in Baum-Welch training.
   };
   array<statemodel_t> statemodel; // Related stuff for each element of smps
-  array<T> xi, txi; // SxS parameters for Baum-Welch iterations
+  array<real_t> xi, txi; // SxS parameters for Baum-Welch iterations
 
 public:
   // Constructor
   hmm_t(const int s=0, const int k=1): S(s), K(k) {}
 
   // Learn data
-  void train(const array<T> &x, const int iters = 100, const hmm_t<T> &H = hmm_t<T>())
+  void train(const array<real_t> &x, const int iters = 100, const hmm_t& H = hmm_t())
   {
     // Reverse x's dims.
     const int M = x.n;
@@ -66,9 +65,9 @@ public:
       lPi.resize(S);
       for (int s=0; s<S; ++s) lPi(s) = log(1.0/S);
       lA.resize(S, S);
-      for (int i=0; i<S*S; ++i) lA[i] = log(T(rand())/RAND_MAX);
+      for (int i=0; i<S*S; ++i) lA[i] = log(real_t(rand())/RAND_MAX);
       for (int i=0; i<S; ++i) {
-	T ls = log(0.0);
+	real_t ls = log(0.0);
 	for (int j=0; j<S; ++j) logadd(ls, lA(i,j));
 	for (int j=0; j<S; ++j) lA(i,j) -= ls;
       }
@@ -85,9 +84,9 @@ public:
     }
 
     // Allocate buffers
-    array<T> q( N, K, S);
-    array<T> lp( S, N);
-    array<T> lk( iters);
+    array<real_t> q( N, K, S);
+    array<real_t> lp( S, N);
+    array<real_t> lk( iters);
     statemodel.resize(S);
     for( int s=0; s<S; ++s) {
       statemodel_t& store = statemodel(s); // related stuff for each element of smps
@@ -117,7 +116,7 @@ public:
       // Compute overall state likelihoods
       for( int s=0; s<S; ++s)
 	for( int j=0; j<N; ++j){
-	  T tp = log( 0.0);
+	  real_t tp = log( 0.0);
 	  for( int k=0; k<K; ++k)
 	  logadd( tp, q(j,k,s));
 	  lp(s,j) = tp;
@@ -128,7 +127,7 @@ public:
 	statemodel(s).la(0) = lPi(s) + lp(s,0);
       for (int t=0; t<N-1; ++t) {
 	for (int j=0; j<S; ++j) {
-	  T ls = log(0.0);
+	  real_t ls = log(0.0);
 	  for (int s=0; s<S; ++s)
 	    logadd( ls, statemodel(s).la(t) + lA(s,j));
 	  statemodel(j).la(t+1) = ls + lp(j,t+1);
@@ -141,7 +140,7 @@ public:
       statemodel(S-1).lb(N-1) = 0;
       for (int t = N-2; t >= 0; --t) {
 	for (int i=0; i<S; ++i) {
-	  T ls = log(0.0);
+	  real_t ls = log(0.0);
 	  for (int j=0; j<S; ++j)
 	    logadd(ls, statemodel(j).lb(t+1) + lA(i,j) + lp(j,t+1));
 	  statemodel(i).lb(t) = ls;
@@ -152,7 +151,7 @@ public:
       for( int i=0; i<S*S; ++i)
 	xi[i] = log(0.0);
       for (int t=0; t<N-1; ++t) {
-	T ls = log(0.0);
+	real_t ls = log(0.0);
 	for (int s=0; s<S; ++s) {
 	  for (int j=0; j<S; ++j) {
 	    txi(s,j) = lA(s,j) + statemodel(s).la(t) + lp(j,t+1) + statemodel(j).lb(t+1);
@@ -164,15 +163,15 @@ public:
       }
 
       // Get gamma
-      array<T> la_lb(S);
+      array<real_t> la_lb(S);
       for( int j=0; j<N; ++j) {
-	T ls = log(0.0);
+	real_t ls = log(0.0);
 	for (int s=0; s<S; ++s) {
 	  la_lb[s] = statemodel(s).la(j) + statemodel(s).lb(j);
 	  logadd( ls, la_lb[s]);
 	}
 	for (int s=0; s<S; ++s){
-	  const T tg = la_lb[s] - lp(s,j) - ls;
+	  const real_t tg = la_lb[s] - lp(s,j) - ls;
 	  for( int k=0; k<K; ++k) {
 	    statemodel(s).g(j,k) = tg + q(j,k,s);
 	  }
@@ -196,13 +195,13 @@ public:
 
       for (int s=0; s<S; ++s) {
 	// Initial probabilities
-	T tp = log(0.0);
+	real_t tp = log(0.0);
 	for( int i=0; i<K; ++i)
 	  logadd(tp, log(statemodel(s).g(0,i)));
 	lPi(s) = tp;
 
 	// Transition matrix
-	T ls = log(0.0);
+	real_t ls = log(0.0);
 	for( int j=0; j<S; ++j)
 	  logadd(ls, xi(s,j));
 	for( int j=0; j<S; ++j)
@@ -215,13 +214,13 @@ public:
   }
 
   // Classify data "x" into "q" using a known HMM
-  void classify( array<int> &q, const array<T> &x, const array<T> &bias = array<T>(), const int ist = -1)
+  void classify( array<int> &q, const array<real_t> &x, const array<real_t> &bias = array<real_t>(), const int ist = -1)
   {
     // Input dims of array are reversed
     const int M = x.n, N = x.m;
 
     // Get state probabilities
-    array<T> lB( S, N);
+    array<real_t> lB( S, N);
     for( int i=0; i<S*N; ++i)
       lB[i] = log(0.0); // Init all lB(s,j)'s.
 
@@ -244,13 +243,13 @@ public:
   }
 
 private:
-  T sq(const T x) const { return x*x; }
+  real_t sq(const real_t x) const { return x*x; }
 
   // Viterbi decoding
-  void viterbi(array<int> &q, const array<T> &lB, const int ist = -1)
+  void viterbi(array<int> &q, const array<real_t> &lB, const int ist = -1)
   {
     const int N = lB.n;
-    array<T> d( S, 2);
+    array<real_t> d( S, 2);
     array<int> p( S, N);
 
     // Override initial state if one is provided
@@ -275,10 +274,10 @@ private:
       for( int i=0; i<S; ++i){
 
 	// Find max likelihood and its index on temp variables
-	T dt = -HUGE_VAL;
+	real_t dt = -HUGE_VAL;
 	int pt = 0;
 	for( int j=0; j<S; ++j){
-	  T tt = lA(j,i) + d(j,di);
+	  real_t tt = lA(j,i) + d(j,di);
 	  if( tt > dt){
 	    dt = tt;
 	    pt = j;
@@ -293,7 +292,7 @@ private:
     }
 
     // Terminate
-    T l = d(0,di);
+    real_t l = d(0,di);
     q.resize( N);
     q(N-1) = 0;
     for( int i=1; i<S; ++i)
@@ -309,25 +308,24 @@ private:
 
 #ifdef UNUSED
   // Short-time Viterbi decoding
-  void stviterbi(array<int> &q, const array<T> &lB)
+  void stviterbi(array<int> &q, const array<real_t> &lB)
   {
-    const int M = lB.m;
     const int N = lB.n;
     q.resize( N);
 
     // Initial probability vector
-    array<T> pp(lPi);
+    array<real_t> pp(lPi);
 
     int a = 0;
     for( int b=1; b<N; ){
 
       // Get state paths for a short segment
       array<int> s;
-      iviterbi( lB, a, b, pp, s);
+      iviterbi(s, lB, pp, a, b);
 
       // Find fusion point, where all possible solutions converge to the same state
       int t = -1;
-      for( int j=0; j<s.n; ++j) {
+      for( size_t j=0; j<s.n; ++j) {
 	for( int i=0; i<S-1; ++i) {
 	  if (s(i,j) != s(i+1,j)) {
 	    t = j;
@@ -353,11 +351,11 @@ private:
   }
 
   // Interim Viterbi decoding
-  void iviterbi(array<int> &q, const array<T> &lB, const array<T> &lP, const int a, const int b)
+  void iviterbi(array<int> &q, const array<real_t> &lB, const array<real_t> &lP, const int a, const int b)
   {
     const int N = b-a;
 
-    array<T> d( S, 2);
+    array<real_t> d( S, 2);
     array<int> p( S, N);
 
     // Initialize
@@ -372,10 +370,10 @@ private:
       for( int i=0; i<S; ++i){
 
 	// Find max likelihood and its index on temp variables
-	T dt = -HUGE_VAL;
+	real_t dt = -HUGE_VAL;
 	int pt = 0;
 	for( int j=0; j<S; ++j){
-	  T tt = lA(j,i) + d(j,di);
+	  real_t tt = lA(j,i) + d(j,di);
 	  if( tt > dt){
 	    dt = tt;
 	    pt = j;
@@ -468,8 +466,7 @@ public:
 };
 
 // Combine two HMMs, using transition-matrix probability p1 for h1, and p2 for h2.
-template <class T>
-void combine( hmm_t<T> &H, const hmm_t<T> &h1, const hmm_t<T> &h2, const T p1 = 0.5, const T p2 = 0.5)
+void combine( hmm_t& H, const hmm_t& h1, const hmm_t& h2, const real_t p1 = 0.5, const real_t p2 = 0.5)
 {
   if( h1.K != h2.K)
     throw std::runtime_error( "combine(): incompatible HMM state K's " + to_str(h1.K) + " and " + to_str(h2.K) + ".");

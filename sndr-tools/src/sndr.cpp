@@ -3,11 +3,6 @@
 // author  : Paris Smaragdis
 
 #include "sndr.h"
-#ifdef __FLOAT
-typedef float real_t;
-#else
-typedef double real_t;
-#endif
 
 // Timer
 

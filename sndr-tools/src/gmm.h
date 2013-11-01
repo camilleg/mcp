@@ -8,32 +8,30 @@
 #include <fstream>
 #include <iostream>
 
-#include <x86intrin.h> // All SIMD intrinsics, not just SSE3.
-// Has effect only with -march=native, -mfpmath, -msse, etc; AND -On for n>0.
+#include <x86intrin.h> // All SIMD intrinsics.  Requires -march=native, -mfpmath, -msse, etc; AND -On for n>0.
 
 #include "array.h"
 #include "logadd.h"
 #include "state.h"
 
 // Gaussian mixture model class
-template <class T>
-class gmm_t: public state_t<T> {
-  int K;        // Number of Gaussians
-  int M;        // Dimensions of input data.
-  array<T> c;	// priors
-  array<T> m;	// means
-  array<T> is;	// inverse variances
-  array<T> ldt;	// covariances aka determinants
-  // M == m.m == is.m.
-  T dg;  // Diagonal load
+class gmm_t: public state_t {
+  int K;		// number of gaussians
+  int M;		// dimensions of input data
+  array<real_t> c;	// priors
+  array<real_t> m;	// means
+  array<real_t> is;	// inverse variances
+  array<real_t> ldt;	// covariances aka determinants
+  real_t dg;		// Diagonal load
+  // Always, M == m.m == is.m.
 
 public:
   // Constructor
-  gmm_t(int k=0/*uninitialized*/, T d=__FLT_EPSILON__) : K(k), m(0), dg(d) {}
+  gmm_t(int k=0/*uninitialized*/, real_t d=__FLT_EPSILON__) : K(k), m(0), dg(d) {}
 
   bool uninitialized() const { return K <= 0; }
-  int dimensions() const { return M; }
-  int numGaussians() const { return K; }
+  int dimensions()     const { return M; }
+  int numGaussians()   const { return K; }
 
   void init(const int mArg, const int kArg)
   {
@@ -53,12 +51,12 @@ public:
   {
     if (uninitialized())
       throw std::runtime_error( "gmm_t::init2(): uninitialized.");
-    const T startingValue = 0.1;
+    const real_t startingValue = 0.1;
     for (int k=0; k<K; ++k) {
       ldt(k) = 0;
       c(k) = 1.0/K;
       for (int i=0; i<M; ++i) {
-	m(i,k) = T(rand())/RAND_MAX - 0.5;
+	m(i,k) = real_t(rand())/RAND_MAX - 0.5;
 	is(i,k) = startingValue;
 	ldt(k) += log(startingValue); // TODO: just assign ldt(k) directly, M * log(startingValue).
       }
@@ -69,7 +67,7 @@ public:
   void normalizeLogPriors() { c.normalize_log_also(); }
 
   // Learn data "x"
-  void train( const array<T> &x, const int iters = 100, const gmm_t<T> &G = gmm_t<T>(), bool prior = false)
+  void train( const array<real_t> &x, const int iters = 100, const gmm_t& G = gmm_t(), bool prior = false)
   {
     if (uninitialized())
       throw std::runtime_error( "gmm_t::train(): uninitialized.");
@@ -85,8 +83,8 @@ public:
     // Setup
     init(M, K);
 
-    array<T> p( N, K);
-    array<T> lk( iters);
+    array<real_t> p( N, K);
+    array<real_t> lk( iters);
 
 #ifndef __NO_RAND_SEED
     // Randomize
@@ -114,11 +112,11 @@ public:
 	    m(i,k) = x(ri,i);
 	    //					m(i,k) = x(k,i);
 	    //					m(i,k) = T( rand())/RAND_MAX - .5;
-	    T vm = 0;
+	    real_t vm = 0;
 	    for( int j = 0 ; j < N ; j++)
 	    vm += x(j,i);
 	    vm /= N;
-	    T v = dg;
+	    real_t v = dg;
 	    for( int j = 0 ; j < N ; j++)
 	    v += (x(j,i)-vm)*(x(j,i)-vm);
 	    v = v / (N-1);
@@ -146,7 +144,7 @@ public:
       // Massage posterior into shape and compute likelihood
       lk(it) = 0;
       for( int j = 0 ; j < N ; j++){
-	T mx = p(j,0);
+	real_t mx = p(j,0);
 	for( int i = 1 ; i < K ; i++)
 	  mx = std::max( mx, p(j,i));
 	for( int i = 0 ; i < K ; i++)
@@ -154,7 +152,7 @@ public:
 	lk(it) += mx;
       }
       for( int j = 0 ; j < N ; j++){
-	T t = p(j,0);
+	real_t t = p(j,0);
 	for( int i = 1 ; i < K ; i++)
 	  logadd(t, p(j,i));
 	for( int i = 0 ; i < K ; i++)
@@ -180,7 +178,7 @@ public:
 	std::cout << "GMM iteration " << it << ", removing " << K-nK << " blown-up states." << std::endl;
 	// Copy constructor is overkill, because the .v[] std::copy's will get clobbered in the k-loop.
 	// But at least the copy constructor correctly sets dimensions of the xxx2 arrays.
-	array<T> m2(m), is2(is), c2(c), ldt2(ldt);
+	array<real_t> m2(m), is2(is), c2(c), ldt2(ldt);
 	array<int> learn2(learn);
 	// Like init(M, nK), but without updating K yet.
 	c  .resize(   nK);
@@ -208,7 +206,7 @@ public:
 
   // Maximization step of expectation-maximization.
   // Update arg p and members c, m, is, ldt.
-  void maximize(array<T>& p, const array<T> &x, const array<int>& learn)
+  void maximize(array<real_t>& p, const array<real_t> &x, const array<int>& learn)
   {
     if (uninitialized())
       throw std::runtime_error( "gmm_t::maximize(): uninitialized.");
@@ -220,13 +218,13 @@ public:
 #pragma omp parallel for
     for(int k=0; k<K; ++k){
       // Weights
-      const T ps = p.sum(k);
+      const real_t ps = p.sum(k);
       c(k) = ps/N;
 
       if (learn(k)) {
 	// Means
 	for (int i=0; i<M; ++i){
-	  T ms = 0;
+	  real_t ms = 0;
 	  for (int j=0; j<N; ++j)
 	    ms += x(j,i) * p(j,k);
 	  // ms == cblas_ddot( N, &x.v[x.m*i], 1, &p.v[p.m*k], 1);
@@ -236,10 +234,10 @@ public:
 	// Variances
 	ldt(k) = 0;
 	for (int i=0; i<M; ++i){
-	  T ss = dg;
+	  real_t ss = dg;
 	  for (int j=0; j<N; ++j)
 	    ss += sq(x(j,i)-m(i,k)) * p(j,k);
-	  const T init = ps/ss;
+	  const real_t init = ps/ss;
 	  is(i,k) = init;
 	  ldt(k) += log(init);
 	}
@@ -247,19 +245,19 @@ public:
     }
   }
 
-  T placeholderForFunctionName(const array<T>& x, const int j, const int k) const
+  real_t placeholderForFunctionName(const array<real_t>& x, const int j, const int k) const
   {
     if (uninitialized())
       throw std::runtime_error( "gmm_t::placeholderForFunctionName(): uninitialized.");
 
-    const T gc = log(c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI); // bug: move this out of the j-loops that call this
-    T qt = 0;
+    const real_t gc = log(c(k)) + 0.5*ldt(k) - 0.5*M*log(2*M_PI); // bug: move this out of the j-loops that call this
+    real_t qt = 0;
     for (int i=0; i<M; ++i)
       qt += is(i,k) * sq(x(j,i) - m(i,k));
     return gc - 0.5*qt;
   }
 
-  T placeholderForFunctionName2(const array<T>& x, const int j, const int k, const int kArg, const int mArg)
+  real_t placeholderForFunctionName2(const array<real_t>& x, const int j, const int k, const int kArg, const int mArg)
   {
     if (K<=0 && kArg>0) {
       K = kArg;
@@ -269,12 +267,12 @@ public:
   }
 
 private:
-  T sq(const T x) const { return x*x; }
+  real_t sq(const real_t x) const { return x*x; }
 
   // Evaluate log likelihoods of M*N data x into N*K-array p.
   // Comparing several GMMs' likelihoods()s is like an HMM's classify().
   // (Maybe later, another bool arg disables error checking, for during training.)
-  void likelihoods(array<T> &p, const array<T> &x)
+  void likelihoods(array<real_t> &p, const array<real_t> &x)
   {
     if (uninitialized())
       throw std::runtime_error( "gmm_t::likelihoods(): uninitialized.");
@@ -295,7 +293,7 @@ private:
   void computeDeterminants()
   {
     for (int k=0; k<K; ++k) {
-      T t=0;
+      real_t t=0;
       for (int i=0; i<M; ++i)
 	t += log(is(i,k));
       ldt(k) = t;
@@ -359,14 +357,14 @@ public:
     readContents(f);
   }
 
-  void copyGuts(const gmm_t<T>& src)
+  void copyGuts(const gmm_t& src)
   {
     c = src.c;
     ldt = src.ldt;
     m = src.m;
     is = src.is;
   }
-  void stuff(const gmm_t<T>& src)
+  void stuff(const gmm_t& src)
   {
     // Arrays m and is are 2D not 1D, but M and K are the same for
     // src and dst when called from hmm_t::combine(),

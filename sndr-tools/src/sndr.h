@@ -12,8 +12,8 @@
 #include "wavfile.h"
 
 #include <list>
-#include <vector>
 #include <sys/time.h>
+#include <vector>
 
 template <class T>
 class AudioFeatureExtractor_t {
@@ -272,7 +272,7 @@ public:
 #else
   #define baseModel_t gmm_t
 #endif
-  baseModel_t<T> G;              // HMM or GMM model of sound class
+  baseModel_t G;                 // HMM or GMM model of sound class
   AudioFeatureExtractor_t<T> &F; // Feature extractor reference, used as a test
 
   // Constructors
@@ -289,7 +289,7 @@ public:
   }
   
   // Train model G from data A and an initial model.
-  void operator()(AudioFeatures_t<T> &A, const int it, const baseModel_t<T> Ginitial)
+  void operator()(AudioFeatures_t<T> &A, const int it, const baseModel_t Ginitial)
   {
     if (A.F != F)
       throw std::runtime_error("AudioModel_t model-trained feature space mismatch.");
@@ -334,8 +334,8 @@ public:
   array<T> r;    // Transition bias between states
   array<T> bias; // Likelihood bias for each HMM state
 
-  array<int> o; // Classification output
-  hmm_t<T> H;   // The master HMM
+  array<int> o;  // Classification output
+  hmm_t H;       // Master HMM
   AudioFeatureExtractor_t<T> &F;
 
   // Initialize
@@ -375,7 +375,7 @@ public:
 //      throw std::runtime_error("AudioClassifier_t<T>::combine(): Input models are not using the same features");
 
       // Get the model's GMM
-      const gmm_t<T>& G = A->G;
+      const gmm_t& G = A->G;
 
       if (ai == 0) {
 	// First time through loop.  Allocate memory in HMM.

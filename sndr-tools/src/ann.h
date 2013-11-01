@@ -5,11 +5,11 @@
 #ifndef __ANN_H__
 #define __ANN_H__
 
-#include <fstream>
-#include <iostream>
-
 #include "array.h"
 #include "state.h"
+
+#include <fstream>
+#include <iostream>
 
 template <class T>
 class annLayer_t {
@@ -17,7 +17,7 @@ class annLayer_t {
   void gprime(array<T>& dst, const array<T>& src) {} // Derivative of g().
 };
 // Subclasses: tanhLayer logisticLayer, softmaxLayer, rbfLayer, linearLayer, perceptronLayer, hingeLayer, stepLayer
-// Because template classes can't have virtual functions, these subclasses will just override g() and gprime().
+// These override g() and gprime().
 
 template <class T>
 class annMetric_t {
@@ -30,12 +30,11 @@ class annMetric_t {
 
 
 // Gaussian mixture model class
-template <class T>
-class ann_t: public state_t<T> {
+class ann_t: public state_t {
 public:
 
   // Learn data "x"
-  void train( const array<T> &x, const int iters = 100, const ann_t<T> &G = ann_t<T>(), bool prior = false)
+  void train( const array<real_t> &x, const int iters = 100, const ann_t &G = ann_t(), bool prior = false)
   {
   }
 
@@ -48,26 +47,26 @@ public:
   }
 
   // Compute output of every layer (outputs is 2-D).
-  void forwardPropagate(array<T>& outputs, const array<T>& inputToFirstLayer)
+  void forwardPropagate(array<real_t>& outputs, const array<real_t>& inputToFirstLayer)
   {
     // For each member of layers, call its ->g().
   }
 
   // Compute gradient of error of tokenVector w.r.t all weightMatrices.
-  void gradient(array<T>& outputs, const array<T>& tokenVector, const array<T>& x, const array<T>& Z)
+  void gradient(array<real_t>& outputs, const array<real_t>& tokenVector, const array<real_t>& x, const array<real_t>& Z)
   {
     // During back propagation, call metric.eprime() and layers[].gprime().
   }
 
 private:
   // Evaluate log likelihoods of M*N data x into N*K-array p.
-  void likelihoods(array<T> &p, const array<T> &x)
+  void likelihoods(array<real_t> &p, const array<real_t> &x)
   {
   }
 
-  array<annLayer_t<T> > layers;
-  array<T> weightMatrices; // one per layer of the NN
-  annMetric_t<T> metric;
+  array<annLayer_t<real_t> > layers;
+  array<real_t> weightMatrices; // one per layer of the NN
+  annMetric_t<real_t> metric;
 };
 
 #endif

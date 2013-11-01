@@ -23,6 +23,7 @@ CXXFLAGS += -D__HMM_TRAIN
 # Directories
 BIN = bin
 SRC = src
+SRC_H = $(SRC)/../..
 
 # Rules
 
@@ -31,7 +32,8 @@ all: $(BIN)/snd_track $(BIN)/sndr
 $(BIN):
 	mkdir $(BIN)
 
-$(H):  $(SRC)/../../aufeat.h $(SRC)/logadd.h $(SRC)/state.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/ann.h $(SRC)/../../array.h $(SRC)/intransp.h $(SRC)/../../optparse.h $(SRC)/../../wavfile.h
+$(H): $(SRC)/ann.h $(SRC)/gmm.h $(SRC)/hmm.h $(SRC)/intransp.h $(SRC)/logadd.h $(SRC)/real_t.h $(SRC)/state.h \
+  $(SRC_H)/array.h $(SRC_H)/aufeat.h $(SRC_H)/optparse.h $(SRC_H)/wavfile.h
 
 $(BIN)/snd_track: $(SRC)/snd_track.cpp $(H) Makefile
 	$(CXX) $(SRC)/snd_track.cpp $(CXXFLAGS) $(LDFLAGS) -o $(BIN)/snd_track

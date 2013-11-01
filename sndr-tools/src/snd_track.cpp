@@ -6,19 +6,13 @@
 #include "aufeat.h"
 #include "hmm.h"
 #include "optparse.h"
-
 #include "wavfile.h"
+#include "real_t.h"
 
 #include <list>
 #include <sys/time.h>
 
 using namespace std;
-
-#ifdef __FLOAT
-	typedef float real_t;
-#else
-	typedef double real_t;
-#endif
 
 // Feature extraction
 
@@ -108,16 +102,16 @@ int fextract( const array<real_t> &s, array<real_t> &f, array<int> &p, int sr, r
 
 // Learning
 
-int learn( const array<real_t> &in, const array<real_t> &s, const int K, const int it, array<real_t> &t, hmm_t<real_t> &H)
+int learn( const array<real_t> &in, const array<real_t> &s, const int K, const int it, array<real_t> &t, hmm_t &H)
 {
 #ifdef __HMM_TRAIN
 	// Learn overall input
-	hmm_t<real_t> H1( K, 1);
+	hmm_t H1( K, 1);
 	H1.train( in, it);
 	cout << "Learned UBM" << endl;
 	
 	// Learn target sound
-	hmm_t<real_t> H2( K, 1);
+	hmm_t H2( K, 1);
 	H2.train( s, it, H1);
 	cout << "Learned target model" << endl;
 	
@@ -128,7 +122,7 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 	// Define in and out state threshhold
 	return H1.S;
 #else
-	gmm_t<real_t> G[2] = {K,K};
+	gmm_t G[2] = {K,K};
 	// http://stackoverflow.com/questions/18854702/instantiate-c-templated-class-with-arg-and-as-array
 
 	G[0].train(in, it);
@@ -170,7 +164,7 @@ int learn( const array<real_t> &in, const array<real_t> &s, const int K, const i
 
 // Find the target
 
-array<int> search( const array<real_t> &in, hmm_t<real_t> &H, const array<real_t> &b)
+array<int> search( const array<real_t>& in, hmm_t& H, const array<real_t>& b)
 {
 	// Run the classification
 	array<int> o;
@@ -257,7 +251,7 @@ int main( int argc, const char **argv)
 	cout << argv[0] << ": extracted input features, " << fi.m << " x " << fi.n << "." << endl;
 
 	// Do the learning
-	hmm_t<real_t> H;
+	hmm_t H;
 	int stth = learn( fi, ft, O.K, O.it, O.tr, H);
 	cout << argv[0] << ": learned." << endl;
 
