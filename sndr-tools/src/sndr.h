@@ -133,6 +133,13 @@ public:
       srate = sr;
     }
 
+    if (s.empty()) {
+      std::cout << "No features or peaks to extract from empty sound." << std::endl;
+      f.clear();
+      p.clear();
+      return;
+    }
+
     // Some preallocation
     array<T> e((s.size()-sz)/(sz/hp)+1);
     
@@ -147,6 +154,10 @@ public:
     // Get features of input sound using offline estimation
     F.extract_offline(f, e, s, sz/hp);
 #endif
+
+    if (f.empty()) {
+      throw std::runtime_error( "Feature array was emptied");
+    }
 
     if (thr > 0.0) {
       // Threshold is nonzero, so remove low-energy frames.
@@ -175,8 +186,14 @@ public:
 	}
 	std::cout << "Volume trimmed from " << f2.n << " to " << f.n << " frames." << std::endl;
       }
-}
-    
+      if (f.empty()) {
+	std::cout << "Volume trimming left no frames." << std::endl;
+	f.clear();
+	p.clear();
+	return;
+      }
+    }
+
     if (av > 1) {
       // Feature averaging
       const array<T> f2(f);
@@ -189,6 +206,12 @@ public:
 	      t += f2(i, j+k);
 	  f(i,j) = t/av;
 	}
+      if (f.empty()) {
+	std::cout << "Feature averaging left no frames." << std::endl;
+	f.clear();
+	p.clear();
+	return;
+      }
     }
 
     // Transpose in place to make the cache happy during training
@@ -227,24 +250,26 @@ public:
     S.push_back(array<int>());
     F(D.back(), S.back(), in, sr, thrm);
   }
+  int frames() const
+  {
+    int sum = 0;
+    for (typename std::list<array<T> >::const_iterator i = D.begin(); i != D.end(); ++i)
+      sum += i->m;
+    return sum;
+  }
 
   // Consolidate all feature sets
   void consolidate()
   {
-    // Count our data
-    int fs = 0;
-    for (typename std::list<array<T> >::iterator i = D.begin(); i != D.end(); ++i)
-      fs += (*i).m;
-
-//  // Nothing to do
-//  if (fs == 0)
-//    throw std::runtime_error("AudioFeatures_t<T>::consolidate(): empty list");
+    const int numFrames = frames();
+    if (numFrames == 0)
+      throw std::runtime_error("AudioFeatures_t<T>::consolidate(): no frames.");
 
     // Consolidate features
     int ck = 0;
     const int del = F.fopts.find('d') != std::string::npos;
-    C.resize(fs-del*5*D.size(), D.front().n);
-    while (D.size()) {
+    C.resize(numFrames-del*5*D.size(), D.front().n);
+    while (!D.empty()) {
       for (unsigned int k = del*5; k < D.front().m; ++k, ++ck)
 	for (unsigned int j = 0; j < D.front().n; ++j)
 	  C(ck,j) = D.front()(k,j);
