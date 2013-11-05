@@ -318,6 +318,7 @@ public:
 	size_t size() const { return m*n*k; }
 	bool empty() const { return size() == 0; }
 	bool is_vector() const { return m == size() || n == size() || k == size() || empty(); }
+	void clear() { resize(0,0,0); }
 
 	// Return min and max element
 	T min() const { return *std::min_element(v, v+size()); }
