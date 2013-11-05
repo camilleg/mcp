@@ -280,6 +280,7 @@ public:
     std::cout << "Consolidated features are " << C.m << " x " << C.n << "." << std::endl;
 
     // Sanitize output
+    std::cout << "\n\n\n" << C << "\n\n\n";;;;
     for( size_t i=0; i<C.m*C.n; ++i) {
       if(isinf(C[i]))
 	throw std::runtime_error( "AudioFeatures_t<T>::consolidate() exporting infinity.");
