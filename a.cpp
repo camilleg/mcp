@@ -39,11 +39,16 @@ void test_array() {
 
 
 
-// Return a's maximum amplitude.
+// Return a's maximum positive-or-negative amplitude.
 short feature(array<short>& a) {
   const short* p = (const short*)a;
-  return a.empty() ? 0 : *std::max_element(p, p+a.size());
-  // short ampl = 0; for (int i=0; i<a.size(); ++i) ampl = std::max(ampl, short(std::abs(a(i)))); return ampl;
+  if (a.empty())
+    return 0;
+  const std::pair<const short*,const short*> negpos = std::minmax_element(p, p+a.size());
+  const short& u = *negpos.first;
+  const short& v = *negpos.second;
+  // Handle all cases: 0<u<v, u<0<v, u<v<0.
+  return u<=0 ? v : v<=0 ? -u : std::max(-u,int(v));
 }
 
 void plot(short x) {
