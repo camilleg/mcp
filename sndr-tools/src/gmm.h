@@ -75,10 +75,13 @@ public:
     const int M = x.n;
     const int N = x.m;
 
-    // Check input
-    for( int i=0; i<M*N; ++i)
-      if(isinf(x[i]) || isnan(x[i]))
-	throw std::runtime_error( "gmm_t::train() got infinity or NaN.");
+    // Sanitize input
+    for( int i=0; i<M*N; ++i) {
+      if(isinf(x[i]))
+	throw std::runtime_error( "gmm_t::train() got infinity.");
+      if(isnan(x[i]))
+	throw std::runtime_error( "gmm_t::train() got NaN.");
+    }
 
     // Setup
     init(M, K);
