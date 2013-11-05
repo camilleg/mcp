@@ -34,7 +34,7 @@ class ann_t: public state_t {
 public:
 
   // Learn data "x"
-  void train( const array<real_t> &x, const int iters = 100, const ann_t &G = ann_t(), bool prior = false)
+  void train( const array<real_t> &x, const int iters = 100, const state_t &G = ann_t(), bool prior = false)
   {
   }
 

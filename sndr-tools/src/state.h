@@ -20,4 +20,7 @@ private:
   virtual void likelihoods(array<real_t> &p, const array<real_t> &x) {}
 };
 
+// (Methods aren't pure virtual because that complicates train()'s third arg's default value:
+// state_t can't be instantiated.)
+
 #endif

@@ -44,10 +44,10 @@ public:
   // Learn data
   void train(const array<real_t> &x, const int iters = 100, const hmm_t& H = hmm_t())
   {
-    // Reverse x's dims.
+    // Swap x's dims.
     const int M = x.n;
     const int N = x.m;
-    std::cout << "HMM training " << M << " x " << N << std::endl;
+    std::cout << "HMM training " << M << " x " << N << "." << std::endl;
 
     // Setup state model parameters
     smps.resize(S);
@@ -415,7 +415,7 @@ public:
     f.write((const char*)&K, sizeof(int)); // number of gaussians
 
     const int M = smps(0).dimensions();
-    std::cout << ( "DEBUG hmm_t::save('" + filename + "'): number of dimensions M is " + to_str(M) + ".\n");
+//  std::cout << ( "DEBUG hmm_t::save('" + filename + "'): number of dimensions M is " + to_str(M) + ".\n");
     f.write((char*)&M, sizeof(int)); // dimension
     for (int s=0; s<S; ++s)
       smps(s).writeContents(f);
