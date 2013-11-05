@@ -29,7 +29,7 @@ public:
 		if( mode == std::ios::in){
 			file.open( filename.c_str(), std::ios::in | std::ios::binary);
 			if (!file)
-				throw std::runtime_error( "wavfile_t::wavfile_t(): problem reading from filename.");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): failed to read '" + filename + "'.");
 
 			// at start of file
 			file.seekg( 0, std::ios::beg);
@@ -38,12 +38,12 @@ public:
 			char id[4];
 			file.read( id, 4);
 			if( memcmp( id, "RIFF", 4))
-				throw std::runtime_error( "wavfile_t::wavfile_t(): file doesn't start with 'RIFF'.");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): no starting 'RIFF' in file '" + filename + "'.");
 
 			file.seekg( 4, std::ios::cur); // Skip filesize ...
 			file.read( (char*)id, 4);  
 			if( memcmp( id, "WAVE", 4))
-				throw std::runtime_error( "wavfile_t::wavfile_t(): no 'WAVE' id.");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): no 'WAVE' id in file '" + filename + "'.");
 
 			unsigned int i, r, a;
 			signed short c, s, f;
@@ -56,7 +56,7 @@ public:
 				file.read( (char*)&i, sizeof( unsigned int));
 				file.seekg( i, std::ios::cur);
 			}
-			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'fmt ' chunk.");
+			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'fmt ' chunk in file '" + filename + "'.");
 
 		fmt_code:
 			// Get important parameters
@@ -73,7 +73,7 @@ public:
 
 			// Get sample format
 			if( (f > 1) && (s != 16 && s != 8 && s != 32))
-				throw std::runtime_error( "wavfile_t::wavfile_t(): unexpected format (not PCM float, 16-bit or 8-bit).");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): unexpected format (not PCM float, 16-bit or 8-bit) in file '" + filename + "'.");
 
 			// Move to first sample
 			file.seekg( i-16, std::ios::cur);
@@ -84,7 +84,7 @@ public:
 				file.read( (char*)&i, sizeof( unsigned int));
 				file.seekg( i, std::ios::cur);
 			}
-			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'data' chunk.");
+			throw std::runtime_error( "wavfile_t::wavfile_t(): no 'data' chunk in file '" + filename + "'.");
 
 		data_code:
 			// Read number of samples
@@ -97,7 +97,7 @@ public:
 		}else if( mode == std::ios::out){
 			file.open( filename.c_str(), std::ios::out | std::ios::binary);
 			if (!file)
-				throw std::runtime_error( "wavfile_t::wavfile_t(): problem writing to file.");
+				throw std::runtime_error( "wavfile_t::wavfile_t(): problem writing to file '" + filename + "'.");
 			unsigned int i, s;
 
 			// Write header
@@ -143,7 +143,7 @@ public:
 		if( file_type == 2)
 			throw std::runtime_error( "wavfile_t::read_mono(): file opened write-only");
 
-		// Read the first channel only
+		// Read only the first channel
 		if( bits == 16){
 			short s[16];
 			for( size_t i = 0 ; (i < p.size()) && !file.eof() ; ++i){
