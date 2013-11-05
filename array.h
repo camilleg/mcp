@@ -96,7 +96,7 @@ public:
 	{
 #ifdef __CHECK
 		if (k > 1)
-			throw std::runtime_error( "array::operator()(i1,i2): missing third index");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + ", " + to_str(i2) + "): missing third index");
 		if (i1>=m || i2>=n)
 			throw std::runtime_error( "array::operator()(" + to_str(i1) + ", " + to_str(i2) + "): index overflows dimensions " + to_str(m) + ", " + to_str(n));
 #endif
@@ -107,7 +107,7 @@ public:
 	{
 #ifdef __CHECK
 		if (k > 1)
-			throw std::runtime_error( "array::operator()(i1,i2): missing third index");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + ", " + to_str(i2) + "): missing third index");
 		if (i1>=m || i2>=n)
 			throw std::runtime_error( "array::operator()(" + to_str(i1) + ", " + to_str(i2) + "): index overflows dimensions " + to_str(m) + ", " + to_str(n));
 #endif
@@ -119,9 +119,9 @@ public:
 	{
 #ifdef __CHECK
 		if (empty())
-			throw std::runtime_error( "array::operator()(i1): empty array");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + "): empty array");
 		if (n > 1 || k > 1)
-			throw std::runtime_error( "array::operator()(i1): missing second or third index");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + "): missing second or third index");
 		if (i1>=m)
 			throw std::runtime_error( "array::operator()(" + to_str(i1) + ") overflows dimension " + to_str(m));
 #endif
@@ -132,7 +132,7 @@ public:
 	{
 #ifdef __CHECK
 		if (n > 1 || k > 1)
-			throw std::runtime_error( "array::operator()(i1): missing second or third index");
+			throw std::runtime_error( "array::operator()(" + to_str(i1) + "): missing second or third index");
 		if (i1>=m)
 			throw std::runtime_error( "array::operator()(" + to_str(i1) + ") overflows dimension " + to_str(m));
 #endif
@@ -144,9 +144,9 @@ public:
 	{
 #ifdef __CHECK
 		if (empty())
-			throw std::runtime_error( "array::operator[]: empty array");
+			throw std::runtime_error( "array::operator[" + to_str(i1) + "]: empty array");
 		if( i1 >= size())
-			throw std::runtime_error( "array::operator[]: index overflows size " + to_str(size()));
+			throw std::runtime_error( "array::operator[" + to_str(i1) + "]: index overflows size " + to_str(size()));
 #endif
 		return v[i1];
 	}
@@ -155,9 +155,9 @@ public:
 	{
 #ifdef __CHECK
 		if (empty())
-			throw std::runtime_error( "array::operator[]: empty array");
+			throw std::runtime_error( "array::operator[" + to_str(i1) + "]: empty array");
 		if( i1 >= size())
-			throw std::runtime_error( "array::operator[]: index overflows size " + to_str(size()));
+			throw std::runtime_error( "array::operator[" + to_str(i1) + "]: index overflows size " + to_str(size()));
 #endif
 		return v[i1];
 	}
@@ -172,7 +172,7 @@ public:
 	{
 		if( m != i1 || n != i2 || k != i3){
 			if( alias)
-				throw std::runtime_error( "array::resize(): forbidden for alias array");
+				throw std::runtime_error( "array::resize(): forbidden for aliased array");
 			m = i1; n = i2; k = i3;
 			delete [] v; // ok if NULL
 			try{
