@@ -1,4 +1,4 @@
-CFLAGS := -Wall -I.. -I/usr/local/include
+CFLAGS := -Wall -I.. -I/usr/local/include -std=c++0x
 # or -I/usr/local/src/ffmpeg
 
 # for ../array.h

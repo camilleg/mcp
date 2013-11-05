@@ -2,7 +2,7 @@
 CXX= g++ # icpc
 
 # Flags.  Don't define -ffast-math, because that breaks isnan().
-CXXFLAGS = -O3 -I..
+CXXFLAGS = -O3 -I.. -std=c++0x
 CXXFLAGS += -D__NO_RAND_SEED
 ifeq ($(CXX),icpc)
 	CXXFLAGS += -xHOST -ip -no-prec-div -mdynamic-no-pic -openmp -openmp-report0 -vec-report0 -fno-alias
