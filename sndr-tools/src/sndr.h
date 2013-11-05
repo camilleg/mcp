@@ -253,8 +253,8 @@ public:
   int frames() const
   {
     int sum = 0;
-    for (typename std::list<array<T> >::const_iterator i = D.begin(); i != D.end(); ++i)
-      sum += i->m;
+    for (typename std::list<array<T> >::const_iterator it = D.begin(); it != D.end(); ++it)
+      sum += it->m;
     return sum;
   }
 
@@ -269,22 +269,31 @@ public:
     int ck = 0;
     const int del = F.fopts.find('d') != std::string::npos;
     C.resize(numFrames-del*5*D.size(), D.front().n);
-    while (!D.empty()) {
-      for (unsigned int k = del*5; k < D.front().m; ++k, ++ck)
-	for (unsigned int j = 0; j < D.front().n; ++j)
-	  C(ck,j) = D.front()(k,j);
-      D.pop_front();
-      S.pop_front();
+    for (typename std::list<array<T> >::const_iterator it = D.begin(); it != D.end(); ++it) {
+      const array<T>& feature = *it;
+      for (unsigned int k = del*5; k < feature.m; ++k, ++ck)
+	for (unsigned int j = 0; j < feature.n; ++j)
+	  C(ck,j) = feature(k,j);
     }
-    std::cout << "Overall consolidated feature size is " << C.m << " x " << C.n << "." << std::endl;
+    D.clear();
+    S.clear();
+    std::cout << "Consolidated features are " << C.m << " x " << C.n << "." << std::endl;
+
+    // Sanitize output
+    for( size_t i=0; i<C.m*C.n; ++i) {
+      if(isinf(C[i]))
+	throw std::runtime_error( "AudioFeatures_t<T>::consolidate() exporting infinity.");
+      if(isnan(C[i]))
+	throw std::runtime_error( "AudioFeatures_t<T>::consolidate() exporting NaN.");
+    }
   }
 
   // Clear buffers
   void clear()
   {
     C.resize(0);
-    while (!D.empty()) D.pop_front();
-    while (!S.empty()) S.pop_front();
+    D.clear();
+    S.clear();
   }
 };
 
@@ -307,20 +316,20 @@ public:
   // Train model G from data A.
   void operator()(AudioFeatures_t<T> &A, const int it) {
     if (A.F != F)
-      throw std::runtime_error("AudioModel_t trained feature space mismatch.");
+      throw std::runtime_error("AudioModel_t: mismatched feature space for training.");
     A.consolidate();
     G.train(A.C, it);
-    std::cout << "Trained model in " << it << " iterations." << std::endl;
+    std::cout << "AudioModel_t trained in " << it << " iterations." << std::endl;
   }
   
   // Train model G from data A and an initial model.
   void operator()(AudioFeatures_t<T> &A, const int it, const baseModel_t Ginitial)
   {
     if (A.F != F)
-      throw std::runtime_error("AudioModel_t model-trained feature space mismatch.");
+      throw std::runtime_error("AudioModel_t: mismatched feature space for training.");
     A.consolidate();
     G.train(A.C, it, Ginitial);
-    std::cout << "Updated model in " << it << " iterations." << std::endl;
+    std::cout << "AudioModel_t updated in " << it << " iterations." << std::endl;
   }
   
   bool save(const std::string &f) const {
