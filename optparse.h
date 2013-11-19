@@ -44,8 +44,9 @@ T getoption( const std::string& opt, int argc, const char **argv, T iv = T(), co
 }
 
 // Accumulate argvs after "opt" until the next argv that begins with a '-'.
-// Unlike valarray<T> or vector<T>, array<T> uses contiguous memory slots
-// (even though that doesn't apply when T is std::string).
+// (This *could* return std::valarray, which also guarantees contiguous memory (C++03 26.3.2.3/3),
+// or even std::vector, also contiguous (C++03 23.2.4.1).  But that would propagate a mishmash
+// of array<T> and std::valarray<T>'s into the rest of the code.)
 template <class T>
 array<T> mgetoption( const std::string& opt, int argc, const char **argv, const char *descr = NULL)
 {
